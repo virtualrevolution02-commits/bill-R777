@@ -1,0 +1,93 @@
+Design a modern mobile application UI for a motorcycle workshop billing system called “R777 Garage”.
+
+STYLE  
+Use a minimal, modern interface inspired by the Zara mobile app and modern automotive apps. The design should feature large product images, soft shadows, rounded cards, and a dark premium garage-style theme.
+
+COLOR THEME  
+Primary background: dark charcoal (#0F0F0F)  
+Card background: #1E1E1E  
+Primary accent: red (#E53935)  
+Secondary accent: yellow (#FFC107)  
+Text: white and light grey
+
+SCREEN FLOW
+
+1. SPLASH / LOADING SCREEN  
+Display the R777 Garage logo in large bold typography.  
+Show a sleek motorcycle image at the bottom.  
+Include a minimal loading progress bar animation.  
+After loading, automatically transition to the home screen.
+
+2. HOME SCREEN – SPARE PARTS SELECTION  
+Top section:  
+Title: “R777 Garage Workshop”  
+Small hamburger menu icon on the top right.
+
+Search bar below title:  
+Rounded search input with placeholder text:  
+“Search spare parts”.
+
+Main content:  
+A masonry grid of spare parts cards similar to Zara product layout.
+
+Each card contains:  
+- Spare part image  
+- Spare part name  
+- Price in INR  
+
+Example items:  
+Head Light – ₹850  
+Brake Cable – ₹180  
+Engine Oil – ₹450  
+Mirror – ₹250  
+
+Cards should have rounded corners, subtle shadows, and dark backgrounds.
+
+Each card also includes a small circular “+” add button.
+
+Bottom of screen:  
+A large glass-style rounded button labeled “NEXT →”
+
+3. BILL SUMMARY SCREEN  
+Display the selected items.
+
+Title: “R777 Garage Bill”
+
+Sections:
+
+Spare Parts  
+Head Light – ₹850  
+Brake Cable – ₹180  
+Engine Oil – ₹450  
+
+Labour  
+Service – ₹300  
+
+Divider line.
+
+Total Amount:  
+₹1330
+
+Buttons at bottom:  
+Primary button: “Download PDF”  
+Secondary button: “Send WhatsApp”
+
+Buttons should be large rounded buttons with soft shadows.
+
+4. WHATSAPP SHARE SCREEN  
+Display a mock WhatsApp message preview showing the bill text.
+
+Example message:
+
+R777 GARAGE BILL
+
+Head Light ₹850  
+Brake Cable ₹180  
+Engine Oil ₹450  
+Service ₹300
+
+Total ₹1330
+
+The UI should feel fast, simple, and optimized for mechanics who need to quickly add spare parts and generate bills.
+
+Add smooth transitions between screens and modern UI animations.
