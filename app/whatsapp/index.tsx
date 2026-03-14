@@ -9,16 +9,31 @@ import {
   Platform,
   Share,
   ScrollView,
+  Alert,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useGarage } from "@/context/GarageContext";
+import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 
 export default function WhatsAppScreen() {
   const insets = useSafeAreaInsets();
-  const { cart, labourItems, grandTotal } = useGarage();
+  const { customerName, vehicleNumber, finalBalance } = useGarage();
+  const params = useLocalSearchParams();
+  const rawUri = Array.isArray(params.billImageUri) ? params.billImageUri[0] : params.billImageUri;
+  const billImageUri = rawUri;
+
+  const getShareUri = () => {
+    if (!billImageUri) return null;
+    let uri = billImageUri;
+    if (Platform.OS === 'android' && !uri.startsWith('file://')) {
+      uri = `file://${uri}`;
+    }
+    return uri;
+  };
 
   const bubbleScale = useRef(new Animated.Value(0.9)).current;
   const bubbleOpacity = useRef(new Animated.Value(0)).current;
@@ -44,73 +59,132 @@ export default function WhatsAppScreen() {
         }),
       ]),
     ]).start();
-  }, []);
+  }, [bubbleOpacity, bubbleScale, headerOpacity]);
 
   const buildBillText = () => {
     let lines: string[] = [];
-    lines.push("*R777 GARAGE BILL*");
+    lines.push("Dear Customer,");
     lines.push("");
-    cart.forEach((item) => {
-      lines.push(`${item.name}  ₹${item.price * item.quantity}`);
-    });
-    labourItems.forEach((item) => {
-      lines.push(`${item.name}  ₹${item.price}`);
-    });
+    lines.push("Your vehicle service is completed.");
     lines.push("");
-    lines.push(`*Total  ₹${grandTotal}*`);
+    lines.push(`Customer Name: ${customerName || "N/A"}`);
+    lines.push(`Vehicle Number: ${vehicleNumber || "N/A"}`);
+    lines.push("");
+    lines.push("Please find the bill attached.");
+    lines.push("More Details : 8526808766,8438597688");
+    lines.push("Thank you.");
+    lines.push("R777 Garage");
     return lines.join("\n");
   };
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const message = encodeURIComponent(buildBillText());
-    const url = `whatsapp://send?text=${message}`;
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
+    const message = buildBillText();
+    const shareUri = getShareUri();
+    
+    try {
+      if (shareUri && await Sharing.isAvailableAsync()) {
+        await Clipboard.setStringAsync(message);
+        if (Platform.OS === "ios") {
+          Share.share({ message: message, url: shareUri, title: "R777 Garage Bill" });
+        } else {
+          Alert.alert(
+            "Bill Copied & Ready!", 
+            "The text has been copied. Select WhatsApp, then paste the text as the caption for the image.",
+            [
+              {
+                text: "Okay",
+                onPress: async () => {
+                  try {
+                    await Sharing.shareAsync(shareUri, {
+                      dialogTitle: "Share via WhatsApp",
+                      mimeType: "image/jpeg",
+                      UTI: "public.jpeg",
+                    });
+                  } catch (e: any) {
+                    console.log("Sharing error:", e);
+                  }
+                }
+              }
+            ]
+          );
+        }
       } else {
-        Share.share({ message: buildBillText(), title: "R777 Garage Bill" });
+        const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+        Linking.canOpenURL(url).then((supported) => {
+          if (supported) {
+            Linking.openURL(url);
+          } else {
+            Share.share({ message: message, title: "R777 Garage Bill" });
+          }
+        });
       }
-    });
+    } catch (err: any) {
+      Alert.alert("Error", "Could not prepare the share sheet.");
+    }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Share.share({ message: buildBillText(), title: "R777 Garage Bill" });
+    const message = buildBillText();
+    const shareUri = getShareUri();
+
+    try {
+      if (shareUri && await Sharing.isAvailableAsync()) {
+        await Clipboard.setStringAsync(message);
+        if (Platform.OS === "ios") {
+          Share.share({ message: message, url: shareUri, title: "R777 Garage Bill" });
+        } else {
+          Alert.alert(
+            "Text Copied!", 
+            "The bill details are copied to your clipboard. Paste them when the sharing window opens.",
+            [
+              {
+                text: "Share Image",
+                onPress: async () => {
+                  try {
+                    await Sharing.shareAsync(shareUri, {
+                      dialogTitle: "Share Bill Copy",
+                      mimeType: "image/jpeg",
+                      UTI: "public.jpeg",
+                    });
+                  } catch (e: any) {
+                    console.log("Sharing auth error:", e);
+                  }
+                }
+              }
+            ]
+          );
+        }
+      } else {
+        Share.share({ message: message, title: "R777 Garage Bill" });
+      }
+    } catch (err: any) {
+      Alert.alert("Error", "Failed to launch native share.");
+    }
   };
 
   const displayLines = (() => {
-    const lines: { text: string; bold: boolean; isTotal: boolean }[] = [];
-    lines.push({ text: "R777 GARAGE BILL", bold: true, isTotal: false });
+    const lines: { text: string; bold: boolean; isTotal: boolean; isHeader?: boolean; isSmall?: boolean }[] = [];
+    lines.push({ text: "Dear Customer,", bold: false, isTotal: false });
     lines.push({ text: "", bold: false, isTotal: false });
-    cart.forEach((item) => {
-      lines.push({
-        text: `${item.name}${item.quantity > 1 ? ` x${item.quantity}` : ""}`,
-        bold: false,
-        isTotal: false,
-      });
-    });
-    labourItems.forEach((item) => {
-      lines.push({ text: item.name, bold: false, isTotal: false });
-    });
+    lines.push({ text: "Your vehicle service is completed.", bold: false, isTotal: false });
     lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: "Total", bold: true, isTotal: true });
+    lines.push({ text: `Customer Name: ${customerName || "N/A"}`, bold: false, isTotal: false });
+    lines.push({ text: `Vehicle Number: ${vehicleNumber || "N/A"}`, bold: false, isTotal: false });
+    lines.push({ text: "", bold: false, isTotal: false });
+    lines.push({ text: `Total Bill Amount: ₹${finalBalance}`, bold: true, isTotal: true });
+    lines.push({ text: "", bold: false, isTotal: false });
+    lines.push({ text: "Please find the bill attached.", bold: false, isTotal: false });
+    lines.push({ text: "More Details : 8526808766,8438597688", bold: false, isTotal: false });
+    lines.push({ text: "", bold: false, isTotal: false });
+    lines.push({ text: "Thank you.", bold: false, isTotal: false });
+    lines.push({ text: "R777 Garage", bold: true, isTotal: false });
     return lines;
   })();
 
   const prices = (() => {
-    const p: { price: string; bold: boolean }[] = [];
-    p.push({ price: "", bold: false });
-    p.push({ price: "", bold: false });
-    cart.forEach((item) => {
-      p.push({ price: `₹${item.price * item.quantity}`, bold: false });
-    });
-    labourItems.forEach((item) => {
-      p.push({ price: `₹${item.price}`, bold: false });
-    });
-    p.push({ price: "", bold: false });
-    p.push({ price: `₹${grandTotal}`, bold: true });
-    return p;
+    return displayLines.map(() => ({ price: "", bold: false }));
   })();
 
   return (
@@ -312,10 +386,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   billTitle: {
-    fontSize: 15,
+    fontSize: 16,
     letterSpacing: 0.5,
-    color: "#E9EDEF",
+    color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
+    marginBottom: 2,
   },
   billLineText: {
     fontFamily: "Inter_400Regular",

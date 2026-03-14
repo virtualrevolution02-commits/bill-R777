@@ -1,20 +1,29 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Gets the base URL for the Express API server
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
-
-  if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+  // 1. Manually set API URL (best for 5G/Production testing)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
   }
 
-  let url = new URL(`https://${host}`);
+  // 2. Priority: Hosted Firebase Cloud Functions (Singapore region for India)
+  // This avoids all tunnel and local network issues
+  return "https://asia-southeast1-r777-5db5f.cloudfunctions.net/api";
 
-  return url.href;
+  /* 
+  // Old Local detection (keep for reference)
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  const localhost = debuggerHost?.split(':')[0] || 'localhost';
+  if (Platform.OS === 'web') return "";
+  return `http://${localhost}:5000`;
+  */
 }
 
 async function throwIfResNotOk(res: Response) {
@@ -71,10 +80,10 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: Infinity,
-      retry: false,
+      retry: 3, // Retry failed requests 3 times
     },
     mutations: {
-      retry: false,
+      retry: 3, // Retry failed mutations 3 times
     },
   },
 });

@@ -2,7 +2,7 @@
   "expo": {
     "name": "R777 Garage",
     "slug": "r777-garage",
-    "version": "1.0.0",
+    "version": "1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "r777garage",
@@ -15,10 +15,12 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.r777garage"
+      "bundleIdentifier": "com.r777garage",
+      "buildNumber": "1.2.0"
     },
     "android": {
       "package": "com.r777garage",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#0F0F0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -37,11 +39,20 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-speech-recognition"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "766b9fd6-7b9f-422f-a2c8-549570a27827"
+      }
     }
   }
 }

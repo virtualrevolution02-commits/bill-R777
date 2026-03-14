@@ -5,41 +5,104 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Animated,
   Platform,
-  Share,
   Alert,
+  TextInput,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useGarage } from "@/context/GarageContext";
+import ViewShot from "react-native-view-shot";
 
 function BillRow({
   label,
   price,
   bold,
+  onPriceChange,
+  onRemove,
 }: {
   label: string;
   price: number;
   bold?: boolean;
+  onPriceChange?: (newPrice: string) => void;
+  onRemove?: () => void;
 }) {
+  const lastTapRef = useRef<number>(0);
+
+  const handlePress = () => {
+    if (!onRemove) return;
+
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+
+    if (now - lastTapRef.current < DOUBLE_PRESS_DELAY) {
+      // Double tap detected
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onRemove();
+    }
+
+    lastTapRef.current = now;
+  };
+
   return (
-    <View style={[styles.billRow, bold && styles.billRowBold]}>
-      <Text style={[styles.billLabel, bold && styles.billLabelBold]}>
-        {label}
-      </Text>
-      <Text style={[styles.billPrice, bold && styles.billPriceBold]}>
-        ₹{price}
-      </Text>
-    </View>
+    <Pressable onPress={handlePress}>
+      {({ pressed }) => (
+        <View style={[
+          styles.billRow,
+          bold && styles.billRowBold,
+          pressed && onRemove && styles.billRowPressed
+        ]}>
+          <Text style={[styles.billLabel, bold && styles.billLabelBold]}>
+            {label}
+          </Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.currencySymbol}>₹</Text>
+            {onPriceChange ? (
+              <TextInput
+                style={[styles.billPriceInput, bold && styles.billPriceBold]}
+                value={price.toString()}
+                onChangeText={onPriceChange}
+                keyboardType="numeric"
+                selectTextOnFocus
+              />
+            ) : (
+              <Text style={[styles.billPrice, bold && styles.billPriceBold]}>
+                {price}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
 export default function BillScreen() {
   const insets = useSafeAreaInsets();
-  const { cart, labourItems, grandTotal, cartTotal } = useGarage();
+  const {
+    cart,
+    labourItems,
+    grandTotal,
+    updatePartPrice,
+    updateLabourPrice,
+    removeFromCart,
+    removeLabour,
+    finalizeBill,
+    advanceAmount,
+    setAdvanceAmount,
+    finalBalance,
+    customerName,
+    setCustomerName,
+    vehicleNumber,
+    setVehicleNumber,
+    resetGarage,
+  } = useGarage();
+
+  const viewShotRef = useRef<ViewShot>(null);
 
   const pdfButtonScale = useRef(new Animated.Value(1)).current;
   const waButtonScale = useRef(new Animated.Value(1)).current;
@@ -59,47 +122,55 @@ export default function BillScreen() {
     ]).start(callback);
   };
 
-  const buildBillText = () => {
-    let text = "R777 GARAGE BILL\n";
-    text += "─────────────────\n\n";
-    if (cart.length > 0) {
-      text += "SPARE PARTS\n";
-      cart.forEach((item) => {
-        const line = `${item.name}`;
-        const price = `₹${item.price * item.quantity}`;
-        text += `${line.padEnd(20)}${price}\n`;
-      });
-      text += "\n";
-    }
-    if (labourItems.length > 0) {
-      text += "LABOUR\n";
-      labourItems.forEach((item) => {
-        const line = item.name;
-        const price = `₹${item.price}`;
-        text += `${line.padEnd(20)}${price}\n`;
-      });
-      text += "\n";
-    }
-    text += "─────────────────\n";
-    text += `${"TOTAL".padEnd(20)}₹${grandTotal}`;
-    return text;
+  const handleNewBill = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Alert.alert(
+      "Start New Bill",
+      "Are you sure you want to clear current items and start a fresh bill?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start Fresh",
+          style: "destructive",
+          onPress: () => {
+            animateButton(pdfButtonScale, () => {
+              resetGarage();
+              router.replace("/home");
+            });
+          }
+        }
+      ]
+    );
   };
 
-  const handleDownloadPDF = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    animateButton(pdfButtonScale, () => {
-      Alert.alert(
-        "Bill Saved",
-        "Your R777 Garage bill has been saved successfully.",
-        [{ text: "OK" }]
-      );
-    });
-  };
+  const handleWhatsApp = async () => {
+    if (!customerName.trim() || !vehicleNumber.trim()) {
+      Alert.alert("Details Required", "Please enter customer name and vehicle number before proceeding.");
+      return;
+    }
 
-  const handleWhatsApp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // 1. Instantly capture the bill image offline
+    let uri = "";
+    try {
+      if (viewShotRef.current?.capture) {
+        uri = await viewShotRef.current.capture();
+      }
+    } catch (captureErr) {
+      console.error("Failed to capture image:", captureErr);
+      // Optionally alert the user, but still navigate
+    }
+
+    // 2. Fire and forget saving to history in the background (doesn't block UI)
+    finalizeBill().catch(err => console.error("Auto-save failed:", err));
+
+    // 3. Navigate immediately to whatsapp screen
     animateButton(waButtonScale, () => {
-      router.push("/whatsapp");
+      router.push({
+        pathname: "/whatsapp/index",
+        params: uri ? { billImageUri: uri } : undefined
+      });
     });
   };
 
@@ -127,7 +198,28 @@ export default function BillScreen() {
           </Text>
           <Text style={styles.headerBill}> BILL</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.exitButton}
+          onPress={() => {
+            Alert.alert(
+              "Exit Bill",
+              "Are you sure you want to exit? This will clear current bill data.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Exit",
+                  style: "destructive",
+                  onPress: () => {
+                    resetGarage();
+                    router.replace("/home");
+                  }
+                }
+              ]
+            );
+          }}
+        >
+          <Feather name="home" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -135,37 +227,153 @@ export default function BillScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.billCard}>
-          {cart.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Spare Parts</Text>
-              {cart.map((item) => (
-                <BillRow
-                  key={item.id}
-                  label={item.name + (item.quantity > 1 ? ` x${item.quantity}` : "")}
-                  price={item.price * item.quantity}
+        <ViewShot
+          ref={viewShotRef}
+          options={{ format: "jpg", quality: 1.0 }}
+          style={{ backgroundColor: "#0F0F0F" }}
+        >
+          <View style={styles.billCard}>
+            <View style={styles.customerInfoContainer}>
+              <Text style={styles.sectionTitle}>Customer Details</Text>
+              <View style={styles.infoInputRow}>
+                <Feather name="user" size={16} color="#A0A0A0" style={styles.infoIcon} />
+                <TextInput
+                  style={styles.infoInput}
+                  placeholder="Customer Name"
+                  placeholderTextColor="#666"
+                  value={customerName}
+                  onChangeText={setCustomerName}
                 />
-              ))}
-            </>
-          )}
+              </View>
+              <View style={styles.infoInputRow}>
+                <MaterialCommunityIcons name="car-info" size={16} color="#A0A0A0" style={styles.infoIcon} />
+                <TextInput
+                  style={styles.infoInput}
+                  placeholder="Vehicle Number (e.g. MH 12 AB 1234)"
+                  placeholderTextColor="#666"
+                  value={vehicleNumber}
+                  onChangeText={setVehicleNumber}
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
 
-          {labourItems.length > 0 && (
-            <>
-              <View style={styles.sectionGap} />
-              <Text style={styles.sectionTitle}>Labour</Text>
-              {labourItems.map((item) => (
-                <BillRow key={item.id} label={item.name} price={item.price} />
-              ))}
-            </>
-          )}
+            <View style={styles.sectionGap} />
 
-          <View style={styles.divider} />
+            {cart.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Spare Parts</Text>
+                {cart.map((item) => (
+                  <BillRow
+                    key={item.id}
+                    label={item.name + (item.quantity > 1 ? ` x${item.quantity}` : "")}
+                    price={item.price * item.quantity}
+                    onPriceChange={(newPrice) => {
+                      const priceNum = parseInt(newPrice) || 0;
+                      // Since the row shows total for that item (price * quantity), 
+                      // we update the unit price in context
+                      updatePartPrice(item.id, Math.floor(priceNum / item.quantity));
+                    }}
+                    onRemove={() => {
+                      Alert.alert(
+                        "Remove Part",
+                        `Are you sure you want to remove ${item.name}?`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Remove",
+                            style: "destructive",
+                            onPress: () => removeFromCart(item.id)
+                          }
+                        ]
+                      );
+                    }}
+                  />
+                ))}
+              </>
+            )}
 
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalPrice}>₹{grandTotal}</Text>
+            <View style={styles.sectionGap} />
+            <Text style={styles.sectionTitle}>Advance Payment</Text>
+            <BillRow
+              label="Advance Received"
+              price={advanceAmount}
+              onPriceChange={(newPrice) => {
+                setAdvanceAmount(parseInt(newPrice) || 0);
+              }}
+            />
+
+            {labourItems.length > 0 && (
+              <>
+                <View style={styles.sectionGap} />
+                <Text style={styles.sectionTitle}>Labour</Text>
+                {labourItems.map((item) => (
+                  <BillRow
+                    key={item.id}
+                    label={item.name}
+                    price={item.price}
+                    onPriceChange={(newPrice) => {
+                      updateLabourPrice(item.id, parseInt(newPrice) || 0);
+                    }}
+                    onRemove={() => {
+                      Alert.alert(
+                        "Remove Labour",
+                        `Are you sure you want to remove ${item.name}?`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Remove",
+                            style: "destructive",
+                            onPress: () => removeLabour(item.id)
+                          }
+                        ]
+                      );
+                    }}
+                  />
+                ))}
+              </>
+            )}
+
+            <View style={styles.divider} />
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.subtotalPrice}>₹{grandTotal}</Text>
+            </View>
+
+            {advanceAmount > 0 && (
+              <View style={[styles.totalRow, { marginTop: 8 }]}>
+                <Text style={styles.advanceLabel}>Advance</Text>
+                <Text style={styles.advancePrice}>-₹{advanceAmount}</Text>
+              </View>
+            )}
+
+            <View style={[styles.totalRow, { marginTop: 12 }]}>
+              <Text style={styles.totalLabel}>Final Balance</Text>
+              <Text style={styles.totalPrice}>₹{finalBalance}</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.billFooter}>
+              <View style={styles.footerContactRow}>
+                <Feather name="user" size={14} color="#A0A0A0" />
+                <Text style={styles.footerText}>Ragu</Text>
+                <Text style={styles.footerDot}>•</Text>
+                <Feather name="instagram" size={14} color="#A0A0A0" />
+                <Text style={styles.footerText}>@dr._duker</Text>
+              </View>
+              <View style={styles.footerContactRow}>
+                <Feather name="phone" size={14} color="#A0A0A0" />
+                <Text style={styles.footerText}>8526808766, 8438597688</Text>
+              </View>
+              <View style={styles.footerContactRow}>
+                <Feather name="map-pin" size={14} color="#A0A0A0" />
+                <Text style={styles.footerText}>No 2B Vijaya Mangalam Sandagatai Road, Erode-638856</Text>
+              </View>
+            </View>
           </View>
-        </View>
+        </ViewShot>
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
@@ -174,13 +382,13 @@ export default function BillScreen() {
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>₹{cartTotal}</Text>
-            <Text style={styles.summaryKey}>Parts Total</Text>
+            <Text style={styles.summaryValue}>₹{grandTotal}</Text>
+            <Text style={styles.summaryKey}>Subtotal</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>₹{grandTotal}</Text>
-            <Text style={styles.summaryKey}>Grand Total</Text>
+            <Text style={styles.summaryValue}>₹{finalBalance}</Text>
+            <Text style={styles.summaryKey}>Balance</Text>
           </View>
         </View>
       </ScrollView>
@@ -188,12 +396,12 @@ export default function BillScreen() {
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: pdfButtonScale }], marginBottom: 10 }}>
           <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleDownloadPDF}
+            style={[styles.primaryButton, { backgroundColor: '#333' }]}
+            onPress={handleNewBill}
             activeOpacity={0.85}
           >
-            <Feather name="download" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Download PDF</Text>
+            <Feather name="file-plus" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>New Bill</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -204,7 +412,7 @@ export default function BillScreen() {
             activeOpacity={0.85}
           >
             <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
-            <Text style={styles.secondaryButtonText}>Send WhatsApp</Text>
+            <Text style={styles.secondaryButtonText}>NEXT →</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -259,6 +467,16 @@ const styles = StyleSheet.create({
     color: "#A0A0A0",
     letterSpacing: 1,
   },
+  exitButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2A1F1F",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(229, 57, 53, 0.3)",
+  },
   scrollView: {
     flex: 1,
   },
@@ -271,6 +489,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E1E1E",
     borderRadius: 20,
     padding: 20,
+  },
+  customerInfoContainer: {
+    marginBottom: 8,
+  },
+  infoInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  infoIcon: {
+    marginRight: 10,
+  },
+  infoInput: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontFamily: "Inter_500Medium",
+    fontSize: 14,
   },
   sectionTitle: {
     fontFamily: "Inter_600SemiBold",
@@ -291,6 +532,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#2A2A2A",
   },
+  billRowPressed: {
+    backgroundColor: "#2A1818",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+  },
   billRowBold: {
     borderBottomWidth: 0,
   },
@@ -298,11 +545,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 15,
     color: "#FFFFFF",
+    flex: 1,
+    marginRight: 12,
   },
   billLabelBold: {
     fontFamily: "Inter_700Bold",
     fontSize: 17,
     color: "#FFFFFF",
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  currencySymbol: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    color: "#FFC107",
   },
   billPrice: {
     fontFamily: "Inter_500Medium",
@@ -313,6 +572,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 18,
     color: "#FFC107",
+  },
+  billPriceInput: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    color: "#FFC107",
+    minWidth: 60,
+    textAlign: "right",
+    padding: 0,
   },
   divider: {
     height: 1,
@@ -326,12 +593,27 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontFamily: "Inter_700Bold",
-    fontSize: 20,
+    fontSize: 18,
     color: "#FFFFFF",
+  },
+  subtotalPrice: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 18,
+    color: "#A0A0A0",
+  },
+  advanceLabel: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 16,
+    color: "#E53935",
+  },
+  advancePrice: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    color: "#E53935",
   },
   totalPrice: {
     fontFamily: "Inter_700Bold",
-    fontSize: 28,
+    fontSize: 26,
     color: "#FFFFFF",
   },
   summaryRow: {
@@ -402,5 +684,131 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
+  },
+  customAddContainer: {
+    marginTop: 16,
+    alignItems: "flex-start",
+  },
+  glassButtonWrapper: {
+    borderRadius: 24,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
+  },
+  glassButtonBlur: {
+    padding: 12,
+  },
+  glassButton: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    width: "85%",
+    backgroundColor: "#1E1E1E",
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    color: "#FFFFFF",
+  },
+  typeSelector: {
+    flexDirection: "row",
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  typeButtonActive: {
+    backgroundColor: "#2C2C2C",
+  },
+  typeButtonText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#666666",
+  },
+  typeButtonTextActive: {
+    color: "#FFFFFF",
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    color: "#A0A0A0",
+    marginBottom: 8,
+  },
+  modalInput: {
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: "#FFFFFF",
+    fontFamily: "Inter_500Medium",
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  submitCustomButton: {
+    backgroundColor: "#E53935",
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  submitCustomButtonText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  billFooter: {
+    marginTop: 8,
+    gap: 6,
+    alignItems: "center",
+  },
+  footerContactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  footerText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    color: "#A0A0A0",
+    textAlign: "center",
+  },
+  footerDot: {
+    color: "#A0A0A0",
+    fontSize: 12,
+    marginHorizontal: 4,
   },
 });

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
+import BikeRepairAnimation from "@/components/BikeRepairAnimation";
 
 const { width, height } = Dimensions.get("window");
 
@@ -21,8 +21,6 @@ export default function SplashScreen() {
   const logoScale = useRef(new Animated.Value(0.8)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
   const progressWidth = useRef(new Animated.Value(0)).current;
-  const bikeOpacity = useRef(new Animated.Value(0)).current;
-  const bikeTranslate = useRef(new Animated.Value(40)).current;
   const lineScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -47,21 +45,6 @@ export default function SplashScreen() {
         duration: 400,
         useNativeDriver: true,
       }),
-      Animated.parallel([
-        Animated.timing(bikeOpacity, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bikeTranslate, {
-          toValue: 0,
-          duration: 700,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.delay(300),
       Animated.timing(lineScale, {
         toValue: 1,
         duration: 300,
@@ -69,14 +52,16 @@ export default function SplashScreen() {
       }),
       Animated.timing(progressWidth, {
         toValue: width - 64,
-        duration: 1200,
+        duration: 5000,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: false,
       }),
-    ]).start(() => {
-      setTimeout(() => router.replace("/home"), 300);
-    });
+    ]).start();
   }, []);
+
+  const handleAnimationComplete = () => {
+    router.replace("/home");
+  };
 
   return (
     <View
@@ -106,26 +91,14 @@ export default function SplashScreen() {
           <Animated.Text
             style={[styles.tagline, { opacity: subtitleOpacity }]}
           >
-            Spare Parts Billing
+            Sales and Service
           </Animated.Text>
         </Animated.View>
       </View>
 
-      <Animated.View
-        style={[
-          styles.bikeContainer,
-          {
-            opacity: bikeOpacity,
-            transform: [{ translateY: bikeTranslate }],
-          },
-        ]}
-      >
-        <Image
-          source={require("@/assets/images/motorcycle-splash.png")}
-          style={styles.bikeImage}
-          contentFit="contain"
-        />
-      </Animated.View>
+      <View style={styles.bikeContainer}>
+        <BikeRepairAnimation onComplete={handleAnimationComplete} />
+      </View>
 
       <View style={styles.progressContainer}>
         <View style={styles.progressTrack}>
