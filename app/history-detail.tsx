@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HistoryDetailScreen() {
@@ -28,8 +28,9 @@ export default function HistoryDetailScreen() {
 
   if (!bill) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, justifyContent: "center", alignItems: "center" }]}>
-        <Text style={styles.loadingText}>Loading...</Text>
+      <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#FFC107" />
+        <Text style={styles.loadingText}>Fetching record...</Text>
       </View>
     );
   }
@@ -46,18 +47,33 @@ export default function HistoryDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
-          <Text style={styles.label}>Customer Name</Text>
-          <Text style={styles.value}>{bill.customerName || "N/A"}</Text>
+          <View style={styles.infoRowTop}>
+             <View style={styles.infoCol}>
+                <Text style={styles.label}>Customer Name</Text>
+                <Text style={styles.value}>{bill.customerName || "N/A"}</Text>
+             </View>
+             <MaterialCommunityIcons name="account-details-outline" size={24} color="#555" />
+          </View>
           
-          <View style={styles.gap} />
+          <View style={styles.dividerSmall} />
           
-          <Text style={styles.label}>Vehicle Number</Text>
-          <Text style={styles.value}>{bill.vehicleNumber || "N/A"}</Text>
+          <View style={styles.infoRowTop}>
+             <View style={styles.infoCol}>
+                <Text style={styles.label}>Vehicle Number</Text>
+                <Text style={styles.value}>{bill.vehicleNumber || "N/A"}</Text>
+             </View>
+             <MaterialCommunityIcons name="car-cog" size={24} color="#555" />
+          </View>
           
-          <View style={styles.gap} />
+          <View style={styles.dividerSmall} />
           
-          <Text style={styles.label}>Date</Text>
-          <Text style={styles.value}>{new Date(bill.date).toLocaleString()}</Text>
+          <View style={styles.infoRowTop}>
+             <View style={styles.infoCol}>
+               <Text style={styles.label}>Date & Time</Text>
+               <Text style={styles.value}>{new Date(bill.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+             </View>
+             <MaterialCommunityIcons name="calendar-clock" size={24} color="#555" />
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Items</Text>
@@ -126,8 +142,9 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontFamily: "Inter_500Medium",
-    fontSize: 16,
-    color: "#A0A0A0",
+    fontSize: 14,
+    color: "#666",
+    marginTop: 12,
   },
   content: {
     padding: 16,
@@ -148,6 +165,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
+  },
+  infoRowTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  infoCol: {
+    flex: 1,
+  },
+  dividerSmall: {
+    height: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    marginVertical: 14,
   },
   gap: {
     height: 16,

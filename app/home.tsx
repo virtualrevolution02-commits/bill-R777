@@ -287,7 +287,7 @@ export default function HomeScreen() {
             style={styles.menuButton} 
             onPress={() => setMenuOpen(!isMenuOpen)}
           >
-            <Feather name="menu" size={22} color="#FFFFFF" />
+            <Feather name="more-vertical" size={22} color="#FFFFFF" />
           </TouchableOpacity>
           {isMenuOpen && (
             <View style={styles.dropdownMenu}>
@@ -300,6 +300,17 @@ export default function HomeScreen() {
               >
                 <Feather name="clock" size={16} color="#A0A0A0" />
                 <Text style={styles.dropdownText}>History</Text>
+              </TouchableOpacity>
+              <View style={{ height: 1, backgroundColor: "rgba(255, 255, 255, 0.05)", marginHorizontal: 12 }} />
+              <TouchableOpacity 
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push("/earnings");
+                }}
+              >
+                <Feather name="trending-up" size={16} color="#FFC107" />
+                <Text style={styles.dropdownText}>Earnings</Text>
               </TouchableOpacity>
             </View>
           )}

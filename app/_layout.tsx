@@ -24,6 +24,7 @@ function RootLayoutNav() {
       <Stack.Screen name="home" options={{ animation: "fade" }} />
       <Stack.Screen name="bill" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="whatsapp" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="earnings" options={{ animation: "slide_from_right" }} />
     </Stack>
   );
 }
