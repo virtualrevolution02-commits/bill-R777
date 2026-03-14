@@ -4,24 +4,23 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Linking,
   Animated,
   Platform,
   Share,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useGarage } from "@/context/GarageContext";
+
 import * as Sharing from "expo-sharing";
-import * as Clipboard from "expo-clipboard";
 
 export default function WhatsAppScreen() {
   const insets = useSafeAreaInsets();
-  const { customerName, vehicleNumber, finalBalance } = useGarage();
+
   const params = useLocalSearchParams();
   const rawUri = Array.isArray(params.billImageUri) ? params.billImageUri[0] : params.billImageUri;
   const billImageUri = rawUri;
@@ -61,131 +60,51 @@ export default function WhatsAppScreen() {
     ]).start();
   }, [bubbleOpacity, bubbleScale, headerOpacity]);
 
-  const buildBillText = () => {
-    let lines: string[] = [];
-    lines.push("Dear Customer,");
-    lines.push("");
-    lines.push("Your vehicle service is completed.");
-    lines.push("");
-    lines.push(`Customer Name: ${customerName || "N/A"}`);
-    lines.push(`Vehicle Number: ${vehicleNumber || "N/A"}`);
-    lines.push("");
-    lines.push("Please find the bill attached.");
-    lines.push("More Details : 8526808766,8438597688");
-    lines.push("Thank you.");
-    lines.push("R777 Garage");
-    return lines.join("\n");
-  };
-
   const handleSendWhatsApp = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const message = buildBillText();
     const shareUri = getShareUri();
     
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
-        await Clipboard.setStringAsync(message);
         if (Platform.OS === "ios") {
-          Share.share({ message: message, url: shareUri, title: "R777 Garage Bill" });
+          Share.share({ url: shareUri, title: "R777 Garage Bill" });
         } else {
-          Alert.alert(
-            "Bill Copied & Ready!", 
-            "The text has been copied. Select WhatsApp, then paste the text as the caption for the image.",
-            [
-              {
-                text: "Okay",
-                onPress: async () => {
-                  try {
-                    await Sharing.shareAsync(shareUri, {
-                      dialogTitle: "Share via WhatsApp",
-                      mimeType: "image/jpeg",
-                      UTI: "public.jpeg",
-                    });
-                  } catch (e: any) {
-                    console.log("Sharing error:", e);
-                  }
-                }
-              }
-            ]
-          );
+          await Sharing.shareAsync(shareUri, {
+            dialogTitle: "Share via WhatsApp",
+            mimeType: "image/jpeg",
+            UTI: "public.jpeg",
+          });
         }
       } else {
-        const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-        Linking.canOpenURL(url).then((supported) => {
-          if (supported) {
-            Linking.openURL(url);
-          } else {
-            Share.share({ message: message, title: "R777 Garage Bill" });
-          }
-        });
+        Alert.alert("Error", "Sharing is not available on this device.");
       }
-    } catch (err: any) {
+    } catch {
       Alert.alert("Error", "Could not prepare the share sheet.");
     }
   };
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const message = buildBillText();
     const shareUri = getShareUri();
 
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
-        await Clipboard.setStringAsync(message);
         if (Platform.OS === "ios") {
-          Share.share({ message: message, url: shareUri, title: "R777 Garage Bill" });
+          Share.share({ url: shareUri, title: "R777 Garage Bill" });
         } else {
-          Alert.alert(
-            "Text Copied!", 
-            "The bill details are copied to your clipboard. Paste them when the sharing window opens.",
-            [
-              {
-                text: "Share Image",
-                onPress: async () => {
-                  try {
-                    await Sharing.shareAsync(shareUri, {
-                      dialogTitle: "Share Bill Copy",
-                      mimeType: "image/jpeg",
-                      UTI: "public.jpeg",
-                    });
-                  } catch (e: any) {
-                    console.log("Sharing auth error:", e);
-                  }
-                }
-              }
-            ]
-          );
+          await Sharing.shareAsync(shareUri, {
+            dialogTitle: "Share Bill Image",
+            mimeType: "image/jpeg",
+            UTI: "public.jpeg",
+          });
         }
       } else {
-        Share.share({ message: message, title: "R777 Garage Bill" });
+        Alert.alert("Error", "Sharing is not available.");
       }
-    } catch (err: any) {
+    } catch {
       Alert.alert("Error", "Failed to launch native share.");
     }
   };
-
-  const displayLines = (() => {
-    const lines: { text: string; bold: boolean; isTotal: boolean; isHeader?: boolean; isSmall?: boolean }[] = [];
-    lines.push({ text: "Dear Customer,", bold: false, isTotal: false });
-    lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: "Your vehicle service is completed.", bold: false, isTotal: false });
-    lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: `Customer Name: ${customerName || "N/A"}`, bold: false, isTotal: false });
-    lines.push({ text: `Vehicle Number: ${vehicleNumber || "N/A"}`, bold: false, isTotal: false });
-    lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: `Total Bill Amount: ₹${finalBalance}`, bold: true, isTotal: true });
-    lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: "Please find the bill attached.", bold: false, isTotal: false });
-    lines.push({ text: "More Details : 8526808766,8438597688", bold: false, isTotal: false });
-    lines.push({ text: "", bold: false, isTotal: false });
-    lines.push({ text: "Thank you.", bold: false, isTotal: false });
-    lines.push({ text: "R777 Garage", bold: true, isTotal: false });
-    return lines;
-  })();
-
-  const prices = (() => {
-    return displayLines.map(() => ({ price: "", bold: false }));
-  })();
 
   return (
     <View
@@ -239,37 +158,20 @@ export default function WhatsAppScreen() {
               },
             ]}
           >
-            {displayLines.map((line, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.billLineRow,
-                  line.isTotal && styles.billTotalRow,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.billLineText,
-                    line.bold && styles.billLineBold,
-                    i === 0 && styles.billTitle,
-                    line.isTotal && styles.billTotalText,
-                  ]}
-                >
-                  {line.text}
-                </Text>
-                {prices[i]?.price ? (
-                  <Text
-                    style={[
-                      styles.billPriceText,
-                      prices[i].bold && styles.billTotalPrice,
-                    ]}
-                  >
-                    {prices[i].price}
-                  </Text>
-                ) : null}
+            {billImageUri ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image 
+                  source={{ uri: billImageUri }} 
+                  style={styles.billImagePreview} 
+                  resizeMode="contain"
+                />
               </View>
-            ))}
-
+            ) : (
+              <View style={styles.errorContainer}>
+                <Feather name="image" size={40} color="#555" />
+                <Text style={styles.errorText}>Bill Image not found</Text>
+              </View>
+            )}
             <Text style={styles.messageTime}>Just now ✓✓</Text>
           </Animated.View>
         </ScrollView>
@@ -366,63 +268,41 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     backgroundColor: "#005C4B",
-    borderRadius: 12,
+    borderRadius: 8,
     borderTopRightRadius: 2,
-    padding: 14,
-    maxWidth: "90%",
-    minWidth: 200,
+    padding: 3,
+    maxWidth: "92%",
   },
-  billLineRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 3,
-    gap: 20,
+  imagePreviewContainer: {
+    width: 280,
+    height: 380,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#1E1E1E',
   },
-  billTotalRow: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.15)",
-    marginTop: 4,
-    paddingTop: 8,
+  billImagePreview: {
+    width: '100%',
+    height: '100%',
   },
-  billTitle: {
-    fontSize: 16,
-    letterSpacing: 0.5,
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    marginBottom: 2,
+  errorContainer: {
+    width: 280,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E1E1E',
   },
-  billLineText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    color: "#E9EDEF",
-    flex: 1,
-  },
-  billLineBold: {
-    fontFamily: "Inter_600SemiBold",
-  },
-  billTotalText: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    color: "#E9EDEF",
-  },
-  billPriceText: {
-    fontFamily: "Inter_500Medium",
-    fontSize: 14,
-    color: "#E9EDEF",
-    textAlign: "right",
-  },
-  billTotalPrice: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 15,
-    color: "#FFFFFF",
+  errorText: {
+    color: '#A0A0A0',
+    marginTop: 10,
+    fontFamily: 'Inter_400Regular',
   },
   messageTime: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
     color: "rgba(233,237,239,0.5)",
     textAlign: "right",
-    marginTop: 8,
+    marginTop: 4,
+    marginRight: 4,
   },
   inputBarMock: {
     flexDirection: "row",

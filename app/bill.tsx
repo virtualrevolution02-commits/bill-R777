@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -102,6 +103,7 @@ export default function BillScreen() {
     resetGarage,
   } = useGarage();
 
+  const [isGenerating, setIsGenerating] = useState(false);
   const viewShotRef = useRef<ViewShot>(null);
 
   const pdfButtonScale = useRef(new Animated.Value(1)).current;
@@ -149,29 +151,42 @@ export default function BillScreen() {
       return;
     }
 
+    setIsGenerating(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    // 1. Instantly capture the bill image offline
-    let uri = "";
+    
     try {
+      // 1. Save bill (offline first)
+      await finalizeBill();
+
+      // Give UI a moment to settle for the capture (ensure no blinking cursors etc)
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 2. Capture the bill image
+      let uri = "";
       if (viewShotRef.current?.capture) {
         uri = await viewShotRef.current.capture();
       }
-    } catch (captureErr) {
-      console.error("Failed to capture image:", captureErr);
-      // Optionally alert the user, but still navigate
-    }
 
-    // 2. Fire and forget saving to history in the background (doesn't block UI)
-    finalizeBill().catch(err => console.error("Auto-save failed:", err));
+      if (!uri) {
+        throw new Error("Capture failed");
+      }
 
-    // 3. Navigate immediately to whatsapp screen
-    animateButton(waButtonScale, () => {
-      router.push({
-        pathname: "/whatsapp/index",
-        params: uri ? { billImageUri: uri } : undefined
+      // 4. Navigate to whatsapp screen
+      animateButton(waButtonScale, () => {
+        setIsGenerating(false);
+        router.navigate({
+          pathname: "/whatsapp",
+          params: { billImageUri: uri }
+        });
       });
-    });
+    } catch (err) {
+      setIsGenerating(false);
+      console.error("WhatsApp navigation failed:", err);
+      Alert.alert(
+        "Auto-save failed during WhatsApp navigation.",
+        "Failed to save bill or capture image. Please check your data and try again."
+      );
+    }
   };
 
   return (
@@ -229,7 +244,7 @@ export default function BillScreen() {
       >
         <ViewShot
           ref={viewShotRef}
-          options={{ format: "jpg", quality: 1.0 }}
+          options={{ format: "jpg", quality: 0.9, result: "tmpfile" }}
           style={{ backgroundColor: "#0F0F0F" }}
         >
           <View style={styles.billCard}>
@@ -270,8 +285,6 @@ export default function BillScreen() {
                     price={item.price * item.quantity}
                     onPriceChange={(newPrice) => {
                       const priceNum = parseInt(newPrice) || 0;
-                      // Since the row shows total for that item (price * quantity), 
-                      // we update the unit price in context
                       updatePartPrice(item.id, Math.floor(priceNum / item.quantity));
                     }}
                     onRemove={() => {
@@ -407,12 +420,19 @@ export default function BillScreen() {
 
         <Animated.View style={{ transform: [{ scale: waButtonScale }] }}>
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, isGenerating && { opacity: 0.7 }]}
             onPress={handleWhatsApp}
             activeOpacity={0.85}
+            disabled={isGenerating}
           >
-            <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
-            <Text style={styles.secondaryButtonText}>NEXT →</Text>
+            {isGenerating ? (
+              <ActivityIndicator color="#25D366" size="small" />
+            ) : (
+              <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
+            )}
+            <Text style={styles.secondaryButtonText}>
+              {isGenerating ? "GENERATING..." : "NEXT →"}
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -571,7 +591,6 @@ const styles = StyleSheet.create({
   billPriceBold: {
     fontFamily: "Inter_700Bold",
     fontSize: 18,
-    color: "#FFC107",
   },
   billPriceInput: {
     fontFamily: "Inter_500Medium",

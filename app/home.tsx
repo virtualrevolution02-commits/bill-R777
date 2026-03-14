@@ -240,9 +240,12 @@ export default function HomeScreen() {
   };
 
   const handleNext = () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+      Alert.alert("Empty Bill", "Please select at least one item before proceeding.");
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/bill");
+    router.navigate("/bill");
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);

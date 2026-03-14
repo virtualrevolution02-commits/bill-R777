@@ -41,6 +41,7 @@ type GarageContextType = {
   vehicleNumber: string;
   setVehicleNumber: (num: string) => void;
   resetGarage: () => void;
+  currentBillId: string | null;
 };
 
 const GarageContext = createContext<GarageContextType | null>(null);
@@ -53,6 +54,7 @@ export function GarageProvider({ children }: { children: ReactNode }) {
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [customerName, setCustomerName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [currentBillId, setCurrentBillId] = useState<string | null>(null);
 
   const addToCart = (part: SparePart) => {
     setCart((prev) => {
@@ -109,8 +111,9 @@ export function GarageProvider({ children }: { children: ReactNode }) {
   };
 
   const finalizeBill = async () => {
+    const billId = currentBillId || `bill-${Date.now()}`;
     const billData = {
-      id: `bill-${Date.now()}`,
+      id: billId,
       items: { cart, labourItems },
       advance: advanceAmount,
       total: grandTotal,
@@ -122,11 +125,22 @@ export function GarageProvider({ children }: { children: ReactNode }) {
 
     try {
       // Save locally first for offline support
-      const existingBills = await AsyncStorage.getItem('offline_bills');
-      const bills = existingBills ? JSON.parse(existingBills) : [];
-      bills.push(billData);
+      const existingBillsString = await AsyncStorage.getItem('offline_bills');
+      let bills = existingBillsString ? JSON.parse(existingBillsString) : [];
+      
+      const existingIndex = bills.findIndex((b: any) => b.id === billId);
+      if (existingIndex >= 0) {
+        // Update existing bill
+        bills[existingIndex] = billData;
+        console.log('Bill updated locally');
+      } else {
+        // Add new bill
+        bills.push(billData);
+        console.log('Bill saved locally');
+      }
+      
       await AsyncStorage.setItem('offline_bills', JSON.stringify(bills));
-      console.log('Bill saved locally');
+      setCurrentBillId(billId);
     } catch (localErr) {
       console.error('Failed to save bill locally', localErr);
       throw new Error('Failed to save bill locally');
@@ -134,13 +148,18 @@ export function GarageProvider({ children }: { children: ReactNode }) {
 
     try {
       const baseUrl = Platform.OS === 'web' ? '' : 'http://localhost:5000';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
       const response = await fetch(`${baseUrl}/api/bills`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(billData),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('Failed to save bill to server');
@@ -169,6 +188,7 @@ export function GarageProvider({ children }: { children: ReactNode }) {
     setAdvanceAmount(0);
     setCustomerName("");
     setVehicleNumber("");
+    setCurrentBillId(null);
   };
 
   return (
@@ -195,6 +215,7 @@ export function GarageProvider({ children }: { children: ReactNode }) {
         vehicleNumber,
         setVehicleNumber,
         resetGarage,
+        currentBillId,
       }}
     >
       {children}
