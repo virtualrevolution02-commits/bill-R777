@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useGarage } from "@/context/GarageContext";
 import { useFocusEffect } from "@react-navigation/native";
 import { Swipeable } from "react-native-gesture-handler";
 
@@ -11,6 +12,7 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const [bills, setBills] = useState<any[]>([]);
   const [todayTotal, setTodayTotal] = useState(0);
+  const { loadBill } = useGarage();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -89,6 +91,11 @@ export default function HistoryScreen() {
     );
   };
 
+  const handleEditBill = (bill: any) => {
+    loadBill(bill);
+    router.navigate("/home");
+  };
+
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom }]}>
       <View style={styles.header}>
@@ -142,22 +149,38 @@ export default function HistoryScreen() {
           return (
             <View style={styles.swipeContainer}>
               <Swipeable renderRightActions={renderRightActions} containerStyle={styles.swipeableWrapper} overshootRight={false}>
-                <TouchableOpacity 
-                  style={styles.billCard}
-                  onPress={() => router.push({ pathname: "/history-detail", params: { billId: item.id } })}
-                  activeOpacity={0.9}
-                >
-                  <View style={styles.billHeader}>
-                    <Text style={styles.customerName}>{item.customerName || "Unknown Customer"}</Text>
-                    <Text style={styles.billDate}>{new Date(item.date).toLocaleDateString()}</Text>
-                  </View>
-                  <Text style={styles.vehicleNumber}>{item.vehicleNumber || "N/A"}</Text>
+                <View style={styles.billCard}>
+                  <TouchableOpacity 
+                    style={styles.billCardClickable}
+                    onPress={() => router.push({ pathname: "/history-detail", params: { billId: item.id } })}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.billHeader}>
+                      <Text style={styles.customerName}>{item.customerName || "Unknown Customer"}</Text>
+                      <Text style={styles.billNumberText}>{item.id.toString().padStart(3, '0')}</Text>
+                    </View>
+                    <View style={styles.billSubHeader}>
+                      <Text style={styles.vehicleNumber}>{item.vehicleNumber || "N/A"}</Text>
+                      <Text style={styles.billDate}>{new Date(item.date).toLocaleDateString()}</Text>
+                    </View>
+                  </TouchableOpacity>
                   
                   <View style={styles.billFooter}>
-                    <Text style={styles.billTotal}>Total: ₹{item.finalBalance}</Text>
-                    <Feather name="chevron-right" size={20} color="#666" />
+                    <Text style={styles.billTotal}>₹{item.finalBalance}</Text>
+                    <View style={styles.footerActions}>
+                      <TouchableOpacity 
+                        style={styles.editButton}
+                        onPress={() => handleEditBill(item)}
+                      >
+                        <Feather name="edit-2" size={14} color="#FFC107" />
+                        <Text style={styles.editButtonText}>Edit Bill</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => router.push({ pathname: "/history-detail", params: { billId: item.id } })}>
+                        <Feather name="chevron-right" size={20} color="#666" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </TouchableOpacity>
+                </View>
               </Swipeable>
             </View>
           );
@@ -323,6 +346,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2C2C2C",
   },
+  billCardClickable: {
+    marginBottom: 0,
+  },
   billHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -333,6 +359,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
+    flex: 1,
+  },
+  billNumberText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    color: "#FFC107",
+    backgroundColor: "rgba(255, 193, 7, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  billSubHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
   },
   billDate: {
     fontFamily: "Inter_400Regular",
@@ -342,8 +385,7 @@ const styles = StyleSheet.create({
   vehicleNumber: {
     fontFamily: "Inter_500Medium",
     fontSize: 14,
-    color: "#FFC107",
-    marginBottom: 14,
+    color: "#AAAAAA",
   },
   billFooter: {
     flexDirection: "row",
@@ -355,8 +397,29 @@ const styles = StyleSheet.create({
   },
   billTotal: {
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
+    fontSize: 18,
     color: "#FFFFFF",
+  },
+  footerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 193, 7, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 193, 7, 0.2)",
+  },
+  editButtonText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+    color: "#FFC107",
   },
   emptyState: {
     alignItems: "center",

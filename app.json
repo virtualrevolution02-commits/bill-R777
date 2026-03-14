@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "R777 Garage",
-    "slug": "r777-garage",
+    "name": "Ragu Auto Works",
+    "slug": "ragu-auto-works",
     "version": "1.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "r777garage",
+    "scheme": "raguautoworks",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.r777garage",
+      "bundleIdentifier": "com.raguautoworks",
       "buildNumber": "1.2.0"
     },
     "android": {
-      "package": "com.r777garage",
+      "package": "com.raguautoworks",
       "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#0F0F0F",

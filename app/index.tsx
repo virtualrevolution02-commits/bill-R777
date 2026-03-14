@@ -80,8 +80,8 @@ export default function SplashScreen() {
             { opacity: logoOpacity, transform: [{ scale: logoScale }] },
           ]}
         >
-          <Text style={styles.logo}>R777</Text>
-          <Text style={styles.logoSub}>GARAGE</Text>
+          <Text style={styles.logo}>Ragu</Text>
+          <Text style={styles.logoSub}>AUTO WORKS</Text>
           <Animated.View
             style={[
               styles.logoDivider,
@@ -91,7 +91,7 @@ export default function SplashScreen() {
           <Animated.Text
             style={[styles.tagline, { opacity: subtitleOpacity }]}
           >
-            Sales and Service
+            Sales & Service
           </Animated.Text>
         </Animated.View>
       </View>
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 28,
     color: "#FFFFFF",
-    letterSpacing: 12,
+    letterSpacing: 6,
     marginTop: -4,
   },
   logoDivider: {

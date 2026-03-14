@@ -41,7 +41,7 @@ export default function HistoryDetailScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bill Details</Text>
+        <Text style={styles.headerTitle}>Bill {bill.id.toString().padStart(3, '0')}</Text>
         <View style={{ width: 40 }} />
       </View>
 

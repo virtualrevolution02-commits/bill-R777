@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
@@ -97,6 +98,9 @@ function BillRow({
   );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const A4_HEIGHT = (SCREEN_WIDTH - 32) * 1.414;
+
 export default function BillScreen() {
   const insets = useSafeAreaInsets();
   const {
@@ -115,7 +119,13 @@ export default function BillScreen() {
     setCustomerName,
     vehicleNumber,
     setVehicleNumber,
+    lastMeter,
+    setLastMeter,
+    nextMeter,
+    setNextMeter,
     resetGarage,
+    currentBillId,
+    nextBillNumber,
   } = useGarage();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -222,9 +232,9 @@ export default function BillScreen() {
           <Feather name="arrow-left" size={22} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.headerR}>R777</Text>
+          <Text style={styles.headerR}>Ragu</Text>
           <Text style={styles.headerAccent}>
-            <Text style={styles.headerGarage}>GARAGE</Text>
+            <Text style={styles.headerAuto}>AUTO WORKS</Text>
           </Text>
           <Text style={styles.headerBill}> BILL</Text>
         </View>
@@ -262,142 +272,203 @@ export default function BillScreen() {
           options={{ format: "jpg", quality: 0.9, result: "tmpfile" }}
           style={{ backgroundColor: "#0F0F0F" }}
         >
-          <View style={styles.billCard}>
-            <View style={styles.customerInfoContainer}>
-              <Text style={styles.sectionTitle}>Customer Details</Text>
-              <View style={styles.infoInputRow}>
-                <Feather name="user" size={16} color="#A0A0A0" style={styles.infoIcon} />
-                <TextInput
-                  style={styles.infoInput}
-                  placeholder="Customer Name"
-                  placeholderTextColor="#666"
-                  value={customerName}
-                  onChangeText={setCustomerName}
-                />
-              </View>
-              <View style={styles.infoInputRow}>
-                <MaterialCommunityIcons name="car-info" size={16} color="#A0A0A0" style={styles.infoIcon} />
-                <TextInput
-                  style={styles.infoInput}
-                  placeholder="Vehicle Number (e.g. MH 12 AB 1234)"
-                  placeholderTextColor="#666"
-                  value={vehicleNumber}
-                  onChangeText={setVehicleNumber}
-                  autoCapitalize="characters"
-                />
-              </View>
-            </View>
+            <View style={styles.billCard}>
+              <View>
+                <View style={styles.shopHeader}>
+                  <Text style={styles.shopTitle}>Ragu Auto Works</Text>
+                  <Text style={styles.shopSubtitle}>Sales & Service</Text>
+                  
+                  <View style={styles.shopInfoRow}>
+                    <View style={styles.shopDetailsCol}>
+                      <View style={styles.detailItem}>
+                        <Feather name="user" size={11} color="#E53935" style={{ marginTop: 2 }} />
+                        <Text style={styles.detailText}>Ragu</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Feather name="instagram" size={11} color="#E53935" style={{ marginTop: 2 }} />
+                        <Text style={styles.detailText}>@dr._duker</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Feather name="phone" size={11} color="#E53935" style={{ marginTop: 2 }} />
+                        <Text style={styles.detailText}>8526808766, 8438597688</Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Feather name="map-pin" size={11} color="#E53935" style={{ marginTop: 2 }} />
+                        <Text style={[styles.detailText, { flex: 1 }]}>
+                          No 2B Vijaya Mangalam Sandagatai Road, Erode-638856
+                        </Text>
+                      </View>
+                    </View>
 
-            <View style={styles.sectionGap} />
+                    <View style={styles.metricDetailsCol}>
+                      <View style={styles.metricInputCol}>
+                        <Text style={styles.metricLabelWide}>Bill No</Text>
+                        <Text style={[styles.metricInput, { color: "#FFC107", textAlign: "left" }]}>
+                          {currentBillId 
+                            ? currentBillId.padStart(3, '0') 
+                            : nextBillNumber.toString().padStart(3, '0')}
+                        </Text>
+                      </View>
+                      <View style={styles.metricInputCol}>
+                        <Text style={styles.metricLabelWide}>Last Service</Text>
+                        <View style={styles.meterInputContainer}>
+                          <TextInput
+                            style={styles.metricInput}
+                            placeholder="00000"
+                            placeholderTextColor="#333"
+                            value={lastMeter}
+                            onChangeText={setLastMeter}
+                            keyboardType="numeric"
+                          />
+                          <Text style={styles.unitText}>km</Text>
+                        </View>
+                      </View>
+                      <View style={styles.metricInputCol}>
+                        <Text style={styles.metricLabelWide}>Next Service</Text>
+                        <View style={styles.meterInputContainer}>
+                          <TextInput
+                            style={styles.metricInput}
+                            placeholder="00000"
+                            placeholderTextColor="#333"
+                            value={nextMeter}
+                            onChangeText={setNextMeter}
+                            keyboardType="numeric"
+                          />
+                          <Text style={styles.unitText}>km</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </View>
 
-            {cart.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Spare Parts</Text>
-                {cart.map((item) => (
-                  <BillRow
-                    key={item.id}
-                    label={item.name + (item.quantity > 1 ? ` x${item.quantity}` : "")}
-                    price={item.price * item.quantity}
-                    onPriceChange={(newPrice) => {
-                      const priceNum = parseInt(newPrice) || 0;
-                      updatePartPrice(item.id, Math.floor(priceNum / item.quantity));
-                    }}
-                    onRemove={() => {
-                      Alert.alert(
-                        "Remove Part",
-                        `Are you sure you want to remove ${item.name}?`,
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Remove",
-                            style: "destructive",
-                            onPress: () => removeFromCart(item.id)
-                          }
-                        ]
-                      );
-                    }}
-                  />
-                ))}
-              </>
-            )}
+                <View style={styles.divider} />
 
-            <View style={styles.sectionGap} />
-            <Text style={styles.sectionTitle}>Advance Payment</Text>
-            <BillRow
-              label="Advance Received"
-              price={advanceAmount}
-              onPriceChange={(newPrice) => {
-                setAdvanceAmount(parseInt(newPrice) || 0);
-              }}
-            />
+                <View style={styles.customerInfoContainer}>
+                  <View style={styles.compactInputRow}>
+                    <View style={[styles.infoInputSubRow, { flex: 1.5 }]}>
+                      <Feather name="user" size={13} color="#444" style={styles.infoIcon} />
+                      <TextInput
+                        style={styles.compactInput}
+                        placeholder="Customer Name"
+                        placeholderTextColor="#333"
+                        value={customerName}
+                        onChangeText={setCustomerName}
+                      />
+                    </View>
+                    <View style={[styles.infoInputSubRow, { flex: 1 }]}>
+                      <MaterialCommunityIcons name="car-info" size={13} color="#444" style={styles.infoIcon} />
+                      <TextInput
+                        style={styles.compactInput}
+                        placeholder="Vehicle No"
+                        placeholderTextColor="#333"
+                        value={vehicleNumber}
+                        onChangeText={setVehicleNumber}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+                  </View>
+                </View>
 
-            {labourItems.length > 0 && (
-              <>
                 <View style={styles.sectionGap} />
-                <Text style={styles.sectionTitle}>Labour</Text>
-                {labourItems.map((item) => (
-                  <BillRow
-                    key={item.id}
-                    label={item.name}
-                    price={item.price}
-                    onPriceChange={(newPrice) => {
-                      updateLabourPrice(item.id, parseInt(newPrice) || 0);
-                    }}
-                    onRemove={() => {
-                      Alert.alert(
-                        "Remove Labour",
-                        `Are you sure you want to remove ${item.name}?`,
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Remove",
-                            style: "destructive",
-                            onPress: () => removeLabour(item.id)
-                          }
-                        ]
-                      );
-                    }}
-                  />
-                ))}
-              </>
-            )}
 
-            <View style={styles.divider} />
+                {cart.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Spare Parts</Text>
+                    {cart.map((item) => (
+                      <BillRow
+                        key={item.id}
+                        label={item.name + (item.quantity > 1 ? ` x${item.quantity}` : "")}
+                        price={item.price * item.quantity}
+                        onPriceChange={(newPrice) => {
+                          const priceNum = parseInt(newPrice) || 0;
+                          updatePartPrice(item.id, Math.floor(priceNum / item.quantity));
+                        }}
+                        onRemove={() => {
+                          Alert.alert(
+                            "Remove Part",
+                            `Are you sure you want to remove ${item.name}?`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Remove",
+                                style: "destructive",
+                                onPress: () => removeFromCart(item.id)
+                              }
+                            ]
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
 
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.subtotalPrice}>₹{grandTotal}</Text>
-            </View>
+                <View style={styles.sectionGap} />
+                <Text style={styles.sectionTitle}>Advance Payment</Text>
+                <BillRow
+                  label="Advance Received"
+                  price={advanceAmount}
+                  onPriceChange={(newPrice) => {
+                    setAdvanceAmount(parseInt(newPrice) || 0);
+                  }}
+                />
 
-            {advanceAmount > 0 && (
-              <View style={[styles.totalRow, { marginTop: 8 }]}>
-                <Text style={styles.advanceLabel}>Advance</Text>
-                <Text style={styles.advancePrice}>-₹{advanceAmount}</Text>
+                {labourItems.length > 0 && (
+                  <>
+                    <View style={styles.sectionGap} />
+                    <Text style={styles.sectionTitle}>Labour</Text>
+                    {labourItems.map((item) => (
+                      <BillRow
+                        key={item.id}
+                        label={item.name}
+                        price={item.price}
+                        onPriceChange={(newPrice) => {
+                          updateLabourPrice(item.id, parseInt(newPrice) || 0);
+                        }}
+                        onRemove={() => {
+                          Alert.alert(
+                            "Remove Labour",
+                            `Are you sure you want to remove ${item.name}?`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Remove",
+                                style: "destructive",
+                                onPress: () => removeLabour(item.id)
+                              }
+                            ]
+                          );
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
               </View>
-            )}
 
-            <View style={[styles.totalRow, { marginTop: 12 }]}>
-              <Text style={styles.totalLabel}>Final Balance</Text>
-              <Text style={styles.totalPrice}>₹{finalBalance}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.billFooter}>
-              <View style={styles.footerContactRow}>
-                <Feather name="user" size={14} color="#A0A0A0" />
-                <Text style={styles.footerText}>Ragu</Text>
-                <Text style={styles.footerDot}>•</Text>
-                <Feather name="instagram" size={14} color="#A0A0A0" />
-                <Text style={styles.footerText}>@dr._duker</Text>
+            <View style={styles.totalSection}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.currencySymbol}>₹</Text>
+                  <Text style={styles.subtotalPrice}>{grandTotal}</Text>
+                </View>
               </View>
-              <View style={styles.footerContactRow}>
-                <Feather name="phone" size={14} color="#A0A0A0" />
-                <Text style={styles.footerText}>8526808766, 8438597688</Text>
-              </View>
-              <View style={styles.footerContactRow}>
-                <Feather name="map-pin" size={14} color="#A0A0A0" />
-                <Text style={styles.footerText}>No 2B Vijaya Mangalam Sandagatai Road, Erode-638856</Text>
+
+              {advanceAmount > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.advanceLabel}>Advance</Text>
+                  <View style={styles.priceContainer}>
+                    <Text style={[styles.currencySymbol, { color: "#E53935" }]}>-₹</Text>
+                    <Text style={styles.advancePrice}>{advanceAmount}</Text>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.finalBalanceRow}>
+                <Text style={styles.totalLabel}>Final Balance</Text>
+                <View style={styles.priceContainer}>
+                  <Text style={[styles.currencySymbol, { fontSize: 20, color: "#FFFFFF" }]}>₹</Text>
+                  <Text style={styles.totalPrice}>{finalBalance}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -490,7 +561,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#FFFFFF",
   },
-  headerGarage: {
+  headerAuto: {
     fontFamily: "Inter_700Bold",
     fontSize: 20,
     color: "#FFFFFF",
@@ -522,50 +593,56 @@ const styles = StyleSheet.create({
   },
   billCard: {
     backgroundColor: "#1E1E1E",
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    paddingHorizontal: 24, // Slightly more padding for A4 feel
+    paddingVertical: 28,
+    minHeight: A4_HEIGHT, // A4 height approx
+    justifyContent: "space-between", // Push total to bottom if content is short
   },
   customerInfoContainer: {
     marginBottom: 8,
   },
-  infoInputRow: {
+  infoInputSubRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#121212",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
+    backgroundColor: "transparent",
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    height: 32,
   },
-  infoIcon: {
-    marginRight: 10,
+  compactInputRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 4,
   },
-  infoInput: {
+  compactInput: {
     flex: 1,
     color: "#FFFFFF",
     fontFamily: "Inter_500Medium",
-    fontSize: 14,
+    fontSize: 13,
+    padding: 0,
+  },
+  infoIcon: {
+    marginRight: 8,
   },
   sectionTitle: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-    color: "#A0A0A0",
+    fontSize: 10, // Smaller section labels
+    color: "#555",
     letterSpacing: 1,
     textTransform: "uppercase",
-    marginBottom: 12,
+    marginBottom: 4,
   },
   sectionGap: {
-    height: 16,
+    height: 8, // More compact gaps
   },
   billRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 7, // Reduced from 10
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: "#252525",
   },
   swipeContainerRow: {
     backgroundColor: "#E53935",
@@ -585,7 +662,7 @@ const styles = StyleSheet.create({
   },
   billLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize: 15,
+    fontSize: 14, // Slightly smaller
     color: "#FFFFFF",
     flex: 1,
     marginRight: 12,
@@ -625,31 +702,44 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#333333",
-    marginVertical: 16,
+    marginVertical: 12,
+  },
+  totalSection: {
+    marginTop: 12,
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 4,
+  },
+  finalBalanceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    marginTop: 4,
   },
   totalLabel: {
     fontFamily: "Inter_700Bold",
-    fontSize: 18,
+    fontSize: 16,
     color: "#FFFFFF",
+    flex: 1,
   },
   subtotalPrice: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 18,
+    fontSize: 16,
     color: "#A0A0A0",
   },
   advanceLabel: {
     fontFamily: "Inter_400Regular",
-    fontSize: 16,
+    fontSize: 14,
     color: "#E53935",
+    flex: 1,
   },
   advancePrice: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
+    fontSize: 14,
     color: "#E53935",
   },
   totalPrice: {
@@ -829,6 +919,88 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFFFFF",
   },
+  shopHeader: {
+    marginBottom: 4,
+  },
+  shopTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 20,
+    color: "#E53935",
+    marginBottom: 2,
+    letterSpacing: 1,
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  shopSubtitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 9,
+    color: "#666",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  shopInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginTop: 8,
+  },
+  shopDetailsCol: {
+    flex: 1.5,
+    gap: 6,
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  detailText: {
+    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    color: "#AAAAAA",
+    lineHeight: 14,
+  },
+  metricDetailsCol: {
+    flex: 1.2,
+    paddingLeft: 16,
+    gap: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: "#2A1F1F",
+    alignItems: "flex-start", // Changed from flex-end to sit near the divider
+  },
+  metricInputCol: {
+    flexDirection: "column",
+    alignItems: "flex-start", // Changed from flex-end
+    gap: 2,
+  },
+  metricLabelWide: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 9,
+    color: "#666",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  metricInput: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#FFFFFF",
+    textAlign: "left", // Changed from right
+    padding: 0,
+    minWidth: 40,
+  },
+  meterInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start", // Changed from flex-end
+  },
+  unitText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: "#888",
+    marginLeft: 4,
+  },
   billFooter: {
     marginTop: 8,
     gap: 6,
@@ -837,15 +1009,13 @@ const styles = StyleSheet.create({
   footerContactRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     gap: 6,
-    flexWrap: "wrap",
   },
   footerText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "#A0A0A0",
-    textAlign: "center",
+    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    color: "#888",
   },
   footerDot: {
     color: "#A0A0A0",

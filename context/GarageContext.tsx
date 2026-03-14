@@ -42,6 +42,12 @@ type GarageContextType = {
   setVehicleNumber: (num: string) => void;
   resetGarage: () => void;
   currentBillId: string | null;
+  lastMeter: string;
+  setLastMeter: (val: string) => void;
+  nextMeter: string;
+  setNextMeter: (val: string) => void;
+  loadBill: (bill: any) => void;
+  nextBillNumber: number;
 };
 
 const GarageContext = createContext<GarageContextType | null>(null);
@@ -49,12 +55,34 @@ const GarageContext = createContext<GarageContextType | null>(null);
 export function GarageProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [labourItems, setLabourItems] = useState<LabourItem[]>([
-    { id: "labour-1", name: "Service", price: 300 },
+    { id: "labour-1", name: "Labour", price: 300 },
   ]);
   const [advanceAmount, setAdvanceAmount] = useState(0);
   const [customerName, setCustomerName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [currentBillId, setCurrentBillId] = useState<string | null>(null);
+  const [lastMeter, setLastMeter] = useState("");
+  const [nextMeter, setNextMeter] = useState("");
+  const [nextBillNumber, setNextBillNumber] = useState(1);
+
+  React.useEffect(() => {
+    const fetchNextBillNumber = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("offline_bills");
+        if (stored) {
+          const bills = JSON.parse(stored);
+          const maxNum = bills.reduce((max: number, bill: any) => {
+            const num = parseInt(bill.id);
+            return !isNaN(num) ? Math.max(max, num) : max;
+          }, 0);
+          setNextBillNumber(maxNum + 1);
+        }
+      } catch (err) {
+        console.error("Error fetching bill sequence", err);
+      }
+    };
+    fetchNextBillNumber();
+  }, [currentBillId]);
 
   const addToCart = (part: SparePart) => {
     setCart((prev) => {
@@ -111,7 +139,7 @@ export function GarageProvider({ children }: { children: ReactNode }) {
   };
 
   const finalizeBill = async () => {
-    const billId = currentBillId || `bill-${Date.now()}`;
+    const billId = currentBillId || nextBillNumber.toString();
     const billData = {
       id: billId,
       items: { cart, labourItems },
@@ -120,6 +148,8 @@ export function GarageProvider({ children }: { children: ReactNode }) {
       finalBalance: finalBalance,
       customerName,
       vehicleNumber,
+      lastMeter,
+      nextMeter,
       date: new Date().toISOString(),
     };
 
@@ -184,11 +214,24 @@ export function GarageProvider({ children }: { children: ReactNode }) {
 
   const resetGarage = () => {
     setCart([]);
-    setLabourItems([{ id: "labour-1", name: "Service", price: 300 }]);
+    setLabourItems([{ id: "labour-1", name: "Labour", price: 300 }]);
     setAdvanceAmount(0);
     setCustomerName("");
     setVehicleNumber("");
+    setLastMeter("");
+    setNextMeter("");
     setCurrentBillId(null);
+  };
+  
+  const loadBill = (bill: any) => {
+    setCart(bill.items.cart || []);
+    setLabourItems(bill.items.labourItems || []);
+    setAdvanceAmount(bill.advance || 0);
+    setCustomerName(bill.customerName || "");
+    setVehicleNumber(bill.vehicleNumber || "");
+    setLastMeter(bill.lastMeter || "");
+    setNextMeter(bill.nextMeter || "");
+    setCurrentBillId(bill.id);
   };
 
   return (
@@ -216,6 +259,12 @@ export function GarageProvider({ children }: { children: ReactNode }) {
         setVehicleNumber,
         resetGarage,
         currentBillId,
+        lastMeter,
+        setLastMeter,
+        nextMeter,
+        setNextMeter,
+        loadBill,
+        nextBillNumber,
       }}
     >
       {children}

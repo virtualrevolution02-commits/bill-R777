@@ -279,8 +279,9 @@ export default function HomeScreen() {
     >
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>R777</Text>
-          <Text style={styles.headerSubtitle}>Garage Workshop</Text>
+          <Text style={styles.headerTitle}>Ragu</Text>
+          <Text style={styles.headerSubtitle}>Auto Works</Text>
+          <Text style={styles.headerTagline}>Sales & Service</Text>
         </View>
         <View style={{ position: "relative", zIndex: 10 }}>
           <TouchableOpacity 
@@ -508,10 +509,17 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   headerSubtitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 18,
+    color: "#FFFFFF",
+    marginTop: -4,
+  },
+  headerTagline: {
     fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "#A0A0A0",
+    fontSize: 10,
+    color: "#666",
     letterSpacing: 1,
+    textTransform: "uppercase",
     marginTop: 2,
   },
   menuButton: {

@@ -67,7 +67,7 @@ export default function WhatsAppScreen() {
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
         if (Platform.OS === "ios") {
-          Share.share({ url: shareUri, title: "R777 Garage Bill" });
+          Share.share({ url: shareUri, title: "Ragu Auto Works Bill" });
         } else {
           await Sharing.shareAsync(shareUri, {
             dialogTitle: "Share via WhatsApp",
@@ -90,7 +90,7 @@ export default function WhatsAppScreen() {
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
         if (Platform.OS === "ios") {
-          Share.share({ url: shareUri, title: "R777 Garage Bill" });
+          Share.share({ url: shareUri, title: "Ragu Auto Works Bill" });
         } else {
           await Sharing.shareAsync(shareUri, {
             dialogTitle: "Share Bill Image",
@@ -129,7 +129,7 @@ export default function WhatsAppScreen() {
             <MaterialCommunityIcons name="account" size={22} color="#A0A0A0" />
           </View>
           <View>
-            <Text style={styles.contactName}>R777 Garage</Text>
+            <Text style={styles.contactName}>Ragu Auto Works</Text>
             <Text style={styles.contactStatus}>Online</Text>
           </View>
         </View>
