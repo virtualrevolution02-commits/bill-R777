@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Pressable,
   Animated,
   Platform,
   Alert,
   TextInput,
   ActivityIndicator,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -32,53 +32,68 @@ function BillRow({
   onPriceChange?: (newPrice: string) => void;
   onRemove?: () => void;
 }) {
-  const lastTapRef = useRef<number>(0);
-
-  const handlePress = () => {
-    if (!onRemove) return;
-
-    const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300;
-
-    if (now - lastTapRef.current < DOUBLE_PRESS_DELAY) {
-      // Double tap detected
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onRemove();
-    }
-
-    lastTapRef.current = now;
+  const renderRightActions = (progress: any, dragX: any) => {
+    if (!onRemove) return null;
+    const trans = dragX.interpolate({
+      inputRange: [-60, -20, 0],
+      outputRange: [1, 0.5, 0],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity
+        style={styles.deleteActionRow}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onRemove();
+        }}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={{ opacity: trans, transform: [{ scale: trans }] }}>
+          <Feather name="trash-2" size={20} color="#FFFFFF" />
+        </Animated.View>
+      </TouchableOpacity>
+    );
   };
 
-  return (
-    <Pressable onPress={handlePress}>
-      {({ pressed }) => (
-        <View style={[
-          styles.billRow,
-          bold && styles.billRowBold,
-          pressed && onRemove && styles.billRowPressed
-        ]}>
-          <Text style={[styles.billLabel, bold && styles.billLabelBold]}>
-            {label}
+  const rowContent = (
+    <View style={[
+      styles.billRow,
+      bold && styles.billRowBold
+    ]}>
+      <Text style={[styles.billLabel, bold && styles.billLabelBold]}>
+        {label}
+      </Text>
+      <View style={styles.priceContainer}>
+        <Text style={styles.currencySymbol}>₹</Text>
+        {onPriceChange ? (
+          <TextInput
+            style={[styles.billPriceInput, bold && styles.billPriceBold]}
+            value={price.toString()}
+            onChangeText={onPriceChange}
+            keyboardType="numeric"
+            selectTextOnFocus
+          />
+        ) : (
+          <Text style={[styles.billPrice, bold && styles.billPriceBold]}>
+            {price}
           </Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.currencySymbol}>₹</Text>
-            {onPriceChange ? (
-              <TextInput
-                style={[styles.billPriceInput, bold && styles.billPriceBold]}
-                value={price.toString()}
-                onChangeText={onPriceChange}
-                keyboardType="numeric"
-                selectTextOnFocus
-              />
-            ) : (
-              <Text style={[styles.billPrice, bold && styles.billPriceBold]}>
-                {price}
-              </Text>
-            )}
-          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  if (!onRemove) {
+    return rowContent;
+  }
+
+  return (
+    <View style={styles.swipeContainerRow}>
+      <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+        <View style={styles.swipeInnerRow}>
+          {rowContent}
         </View>
-      )}
-    </Pressable>
+      </Swipeable>
+    </View>
   );
 }
 
@@ -552,11 +567,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#2A2A2A",
   },
-  billRowPressed: {
-    backgroundColor: "#2A1818",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    marginHorizontal: -8,
+  swipeContainerRow: {
+    backgroundColor: "#E53935",
+  },
+  swipeInnerRow: {
+    backgroundColor: "#1E1E1E",
+  },
+  deleteActionRow: {
+    width: 60,
+    backgroundColor: "#E53935",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingRight: 15,
   },
   billRowBold: {
     borderBottomWidth: 0,

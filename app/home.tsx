@@ -11,8 +11,8 @@ import {
   FlatList,
   Modal,
   Alert,
-  Pressable,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,28 +28,16 @@ function PartCard({
   quantity,
   onAdd,
   onRemove,
-  onDoubleTap,
+  onSwipeDelete,
 }: {
   part: SparePart;
   isSelected: boolean;
   quantity: number;
   onAdd: () => void;
   onRemove: () => void;
-  onDoubleTap?: () => void;
+  onSwipeDelete?: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const lastTapRef = useRef<number>(0);
-
-  const handleCardPress = () => {
-    const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300;
-    
-    if (now - lastTapRef.current < DOUBLE_PRESS_DELAY) {
-      if (onDoubleTap) onDoubleTap();
-    }
-    
-    lastTapRef.current = now;
-  };
 
   const handleAdd = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -78,10 +66,31 @@ function PartCard({
     ]).start();
   };
 
-  return (
+  const renderRightActions = (progress: any, dragX: any) => {
+    if (!onSwipeDelete) return null;
+    const trans = dragX.interpolate({
+      inputRange: [-80, -20, 0],
+      outputRange: [1, 0.5, 0],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onSwipeDelete();
+        }}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={{ opacity: trans, transform: [{ scale: trans }] }}>
+          <Feather name="trash-2" size={24} color="#FFFFFF" />
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
+
+  const cardContent = (
     <Animated.View style={[styles.card, isSelected && styles.cardSelected, { transform: [{ scale }] }]}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleCardPress} />
-      
       <View style={styles.cardMain} pointerEvents="none">
         <View style={styles.nameContainer}>
           <Text style={styles.cardName}>
@@ -117,6 +126,14 @@ function PartCard({
         </View>
       </View>
     </Animated.View>
+  );
+
+  return (
+    <View style={styles.swipeContainer}>
+      <Swipeable renderRightActions={renderRightActions} containerStyle={styles.swipeableWrapper} overshootRight={false}>
+        {cardContent}
+      </Swipeable>
+    </View>
   );
 }
 
@@ -355,7 +372,7 @@ export default function HomeScreen() {
                 quantity={cartItem?.quantity ?? 0}
                 onAdd={() => addToCart(item)}
                 onRemove={() => decreaseQuantity(item.id)}
-                onDoubleTap={() => handleDoubleTapItem(item)}
+                onSwipeDelete={() => handleDoubleTapItem(item)}
               />
             );
           }}
@@ -553,7 +570,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "#2C2C2C",
-    marginBottom: 12,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 110,
@@ -632,6 +648,23 @@ const styles = StyleSheet.create({
   },
   minusButton: {
     backgroundColor: "#444444",
+  },
+  swipeContainer: {
+    marginBottom: 12,
+    borderRadius: 16,
+    backgroundColor: "#E53935",
+  },
+  swipeableWrapper: {
+    borderRadius: 16,
+  },
+  deleteAction: {
+    width: 65,
+    height: "100%",
+    backgroundColor: "#E53935",
+    justifyContent: "center",
+    alignItems: "center",
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
   brandContainer: {
     marginBottom: 8,
