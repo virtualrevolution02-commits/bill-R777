@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — Ragu Auto Works</title>
+    <meta name="description" content="Privacy Policy for the Ragu Auto Works mobile application. Learn how we collect, use, and protect your information.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a26;
+            --text-primary: #e8e8ed;
+            --text-secondary: #9a9aaf;
+            --text-muted: #6a6a80;
+            --accent: #f97316;
+            --accent-glow: rgba(249, 115, 22, 0.15);
+            --border: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(249, 115, 22, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Ambient background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%;
+            left: -20%;
+            width: 60%;
+            height: 80%;
+            background: radial-gradient(ellipse, rgba(249, 115, 22, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            right: -20%;
+            width: 50%;
+            height: 70%;
+            background: radial-gradient(ellipse, rgba(249, 115, 22, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 56px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 8px 20px 8px 10px;
+            margin-bottom: 28px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .logo-badge .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--accent); }
+            50% { opacity: 0.6; box-shadow: 0 0 20px var(--accent); }
+        }
+
+        .header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #ffffff 0%, #d4d4e0 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .effective-date {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 6px 16px;
+            background: var(--accent-glow);
+            border: 1px solid var(--border-accent);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        /* Sections */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--accent-glow);
+            border: 1px solid var(--border-accent);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .section p,
+        .section li {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        .section p + p {
+            margin-top: 12px;
+        }
+
+        .section ul {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .section ul li {
+            position: relative;
+            padding-left: 22px;
+            margin-bottom: 10px;
+        }
+
+        .section ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.7;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: var(--accent-glow);
+            border: 1px solid var(--border-accent);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 16px;
+        }
+
+        .highlight-box p {
+            color: var(--text-primary) !important;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* Contact card */
+        .contact-card {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.02) 100%);
+            border: 1px solid var(--border-accent);
+            border-radius: 16px;
+            padding: 32px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .contact-card h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .contact-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .contact-email {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: var(--accent);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .contact-email:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.3);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 56px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer .app-name {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px 16px 60px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+                letter-spacing: -1px;
+            }
+
+            .section {
+                padding: 24px 20px;
+                border-radius: 12px;
+            }
+
+            .section h2 {
+                font-size: 18px;
+            }
+
+            .contact-card {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-badge">
+                <span class="dot"></span>
+                Ragu Auto Works
+            </div>
+            <h1>Privacy Policy</h1>
+            <p class="subtitle">How we handle and protect your information</p>
+            <div class="effective-date">Effective: March 15, 2026</div>
+        </header>
+
+        <!-- Section 1 -->
+        <div class="section">
+            <div class="section-number">1</div>
+            <h2>Introduction</h2>
+            <p>Welcome to <strong>Ragu Auto Works</strong> ("we", "us", or "our"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application <strong>Ragu Auto Works – Sales & Service</strong> (the "App").</p>
+            <p>By using the App, you agree to the collection and use of information in accordance with this policy. If you do not agree with the terms of this policy, please do not use the App.</p>
+        </div>
+
+        <!-- Section 2 -->
+        <div class="section">
+            <div class="section-number">2</div>
+            <h2>Information We Collect</h2>
+            <p>We may collect and process the following types of information:</p>
+            <ul>
+                <li><strong>Customer Details:</strong> Name, phone number, address, Instagram ID, and vehicle information that you enter while creating invoices.</li>
+                <li><strong>Service & Billing Data:</strong> Bill numbers, item lists, prices, labour charges, advance payments, odometer readings, and invoice PDF documents.</li>
+                <li><strong>Device Information:</strong> Device model, operating system version, and unique device identifiers for app functionality and diagnostics.</li>
+                <li><strong>Usage Data:</strong> App interaction patterns (e.g., features accessed, screens visited) to improve user experience.</li>
+            </ul>
+        </div>
+
+        <!-- Section 3 -->
+        <div class="section">
+            <div class="section-number">3</div>
+            <h2>How We Use Your Information</h2>
+            <p>The information we collect is used for the following purposes:</p>
+            <ul>
+                <li><strong>Core App Features:</strong> Generating invoices, managing parts inventory, tracking service history, and calculating earnings.</li>
+                <li><strong>Bill Sharing:</strong> Forwarding invoices to customers via WhatsApp or other sharing methods you initiate.</li>
+                <li><strong>Data Persistence:</strong> Storing bills locally on your device and optionally syncing to our server for backup.</li>
+                <li><strong>Improvement:</strong> Analyzing usage patterns to enhance features, fix bugs, and improve performance.</li>
+                <li><strong>Legal Compliance:</strong> Meeting applicable legal obligations and resolving disputes.</li>
+            </ul>
+        </div>
+
+        <!-- Section 4 -->
+        <div class="section">
+            <div class="section-number">4</div>
+            <h2>Data Storage & Security</h2>
+            <p>Your data is primarily stored <strong>locally on your device</strong> using on-device storage. When server-side persistence is enabled, data is transmitted over secure channels.</p>
+            <p>We implement commercially reasonable security measures to protect your information. However, no method of electronic transmission or storage is 100% secure, and we cannot guarantee absolute security.</p>
+            <div class="highlight-box">
+                <p>🔒 We do NOT sell, trade, or rent your personal information to third parties.</p>
+            </div>
+        </div>
+
+        <!-- Section 5 -->
+        <div class="section">
+            <div class="section-number">5</div>
+            <h2>Third-Party Services</h2>
+            <p>The App may integrate with or use the following third-party services:</p>
+            <ul>
+                <li><strong>WhatsApp:</strong> For forwarding invoices to customers. Data shared is governed by WhatsApp's own privacy policy.</li>
+                <li><strong>Expo / React Native:</strong> Framework used to build the App. Expo may collect anonymous diagnostic data.</li>
+                <li><strong>Google Play Services:</strong> For app distribution and updates on Android devices.</li>
+            </ul>
+            <p>We encourage you to review the privacy policies of these third-party services.</p>
+        </div>
+
+        <!-- Section 6 -->
+        <div class="section">
+            <div class="section-number">6</div>
+            <h2>Children's Privacy</h2>
+            <p>The App is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children. If we become aware that a child under 13 has provided us with personal data, we will take steps to delete such information promptly.</p>
+        </div>
+
+        <!-- Section 7 -->
+        <div class="section">
+            <div class="section-number">7</div>
+            <h2>Your Rights</h2>
+            <p>Depending on your location, you may have the following rights regarding your data:</p>
+            <ul>
+                <li><strong>Access:</strong> Request a copy of the personal data we hold about you.</li>
+                <li><strong>Correction:</strong> Request correction of inaccurate personal data.</li>
+                <li><strong>Deletion:</strong> Request deletion of your personal data from our systems.</li>
+                <li><strong>Data Portability:</strong> Request a machine-readable copy of your data.</li>
+            </ul>
+            <p>To exercise any of these rights, please contact us using the information below.</p>
+        </div>
+
+        <!-- Section 8 -->
+        <div class="section">
+            <div class="section-number">8</div>
+            <h2>Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. Any changes will be reflected by updating the "Effective Date" at the top of this page. We encourage you to review this Privacy Policy periodically for any changes.</p>
+            <p>Your continued use of the App after changes are posted constitutes your acceptance of the revised policy.</p>
+        </div>
+
+        <!-- Contact -->
+        <div class="contact-card">
+            <h2>Questions or Concerns?</h2>
+            <p>If you have any questions about this Privacy Policy, please reach out to us.</p>
+            <a href="mailto:raguautoworks@gmail.com" class="contact-email">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                raguautoworks@gmail.com
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p><span class="app-name">Ragu Auto Works — Sales & Service</span></p>
+            <p style="margin-top: 6px;">Erode, Tamil Nadu, India</p>
+            <p style="margin-top: 12px;">© 2026 Ragu Auto Works. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
