@@ -4,8 +4,11 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function HistoryDetailScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
   const { billId } = useLocalSearchParams();
   const [bill, setBill] = useState<any>(null);
@@ -28,84 +31,84 @@ export default function HistoryDetailScreen() {
 
   if (!bill) {
     return (
-      <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator size="large" color="#FFC107" />
-        <Text style={styles.loadingText}>Fetching record...</Text>
+      <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+        <Text style={[styles.loadingText, { color: colors.subtext }]}>Fetching record...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom }]}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color="#FFFFFF" />
+    <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom, backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: colors.card }]} onPress={() => router.back()}>
+          <Feather name="arrow-left" size={22} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bill {bill.id.toString().padStart(3, '0')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Bill {bill.id.toString().padStart(3, '0')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.infoRowTop}>
              <View style={styles.infoCol}>
-                <Text style={styles.label}>Customer Name</Text>
-                <Text style={styles.value}>{bill.customerName || "N/A"}</Text>
+                <Text style={[styles.label, { color: colors.subtext }]}>Customer Name</Text>
+                <Text style={[styles.value, { color: colors.text }]}>{bill.customerName || "N/A"}</Text>
              </View>
-             <MaterialCommunityIcons name="account-details-outline" size={24} color="#555" />
+             <MaterialCommunityIcons name="account-details-outline" size={24} color={colors.subtext} />
           </View>
           
-          <View style={styles.dividerSmall} />
+          <View style={[styles.dividerSmall, { backgroundColor: colors.border }]} />
           
           <View style={styles.infoRowTop}>
              <View style={styles.infoCol}>
-                <Text style={styles.label}>Vehicle Number</Text>
-                <Text style={styles.value}>{bill.vehicleNumber || "N/A"}</Text>
+                <Text style={[styles.label, { color: colors.subtext }]}>Vehicle Number</Text>
+                <Text style={[styles.value, { color: colors.text }]}>{bill.vehicleNumber || "N/A"}</Text>
              </View>
-             <MaterialCommunityIcons name="car-cog" size={24} color="#555" />
+             <MaterialCommunityIcons name="car-cog" size={24} color={colors.subtext} />
           </View>
           
-          <View style={styles.dividerSmall} />
+          <View style={[styles.dividerSmall, { backgroundColor: colors.border }]} />
           
           <View style={styles.infoRowTop}>
              <View style={styles.infoCol}>
-               <Text style={styles.label}>Date & Time</Text>
-               <Text style={styles.value}>{new Date(bill.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+               <Text style={[styles.label, { color: colors.subtext }]}>Date & Time</Text>
+               <Text style={[styles.value, { color: colors.text }]}>{new Date(bill.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</Text>
              </View>
-             <MaterialCommunityIcons name="calendar-clock" size={24} color="#555" />
+             <MaterialCommunityIcons name="calendar-clock" size={24} color={colors.subtext} />
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Items</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionTitle, { color: colors.subtext }]}>Items</Text>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           {bill.items?.cart?.map((item: any) => (
             <View key={item.id} style={styles.row}>
-              <Text style={styles.itemText}>{item.name} (x{item.quantity})</Text>
-              <Text style={styles.itemPrice}>₹{item.price * item.quantity}</Text>
+              <Text style={[styles.itemText, { color: colors.text }]}>{item.name} (x{item.quantity})</Text>
+              <Text style={[styles.itemPrice, { color: colors.secondary }]}>₹{item.price * item.quantity}</Text>
             </View>
           ))}
           {bill.items?.labourItems?.map((item: any) => (
             <View key={item.id} style={styles.row}>
-              <Text style={styles.itemText}>{item.name}</Text>
-              <Text style={styles.itemPrice}>₹{item.price}</Text>
+              <Text style={[styles.itemText, { color: colors.text }]}>{item.name}</Text>
+              <Text style={[styles.itemPrice, { color: colors.secondary }]}>₹{item.price}</Text>
             </View>
           ))}
           
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           
           <View style={styles.row}>
-            <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.subtotalPrice}>₹{bill.total}</Text>
+            <Text style={[styles.totalLabel, { color: colors.text }]}>Subtotal</Text>
+            <Text style={[styles.subtotalPrice, { color: colors.subtext }]}>₹{bill.total}</Text>
           </View>
           {bill.advance > 0 && (
             <View style={[styles.row, { marginTop: 8 }]}>
-              <Text style={styles.advanceLabel}>Advance Paid</Text>
-              <Text style={styles.advancePrice}>-₹{bill.advance}</Text>
+              <Text style={[styles.advanceLabel, { color: colors.primary }]}>Advance Paid</Text>
+              <Text style={[styles.advancePrice, { color: colors.primary }]}>-₹{bill.advance}</Text>
             </View>
           )}
           <View style={[styles.row, { marginTop: 12 }]}>
-            <Text style={styles.finalTotal}>Final Balance</Text>
-            <Text style={styles.finalTotalPrice}>₹{bill.finalBalance}</Text>
+            <Text style={[styles.finalTotal, { color: colors.text }]}>Final Balance</Text>
+            <Text style={[styles.finalTotalPrice, { color: colors.text }]}>₹{bill.finalBalance}</Text>
           </View>
         </View>
       </ScrollView>
@@ -113,10 +116,10 @@ export default function HistoryDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F0F0F",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -125,20 +128,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E1E1E",
+    borderBottomColor: colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 18,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   loadingText: {
     fontFamily: "Inter_500Medium",
@@ -151,9 +154,11 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   card: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   label: {
     fontFamily: "Inter_500Medium",
@@ -164,7 +169,7 @@ const styles = StyleSheet.create({
   value: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   infoRowTop: {
     flexDirection: "row",
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Inter_400Regular",
     fontSize: 15,
-    color: "#FFFFFF",
+    color: colors.text,
     paddingRight: 16,
   },
   itemPrice: {
@@ -210,13 +215,13 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#333",
+    backgroundColor: colors.border,
     marginVertical: 16,
   },
   totalLabel: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   subtotalPrice: {
     fontFamily: "Inter_600SemiBold",
@@ -236,11 +241,11 @@ const styles = StyleSheet.create({
   finalTotal: {
     fontFamily: "Inter_700Bold",
     fontSize: 18,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   finalTotalPrice: {
     fontFamily: "Inter_700Bold",
     fontSize: 20,
-    color: "#FFFFFF",
+    color: colors.text,
   },
 });

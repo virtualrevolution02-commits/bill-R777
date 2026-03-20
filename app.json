@@ -50,6 +50,7 @@
       "router": {
         "origin": "https://replit.com/"
       },
+      "privacyPolicyUrl": "https://example.com/privacy-policy",
       "eas": {
         "projectId": "766b9fd6-7b9f-422f-a2c8-549570a27827"
       }

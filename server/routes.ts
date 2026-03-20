@@ -1,5 +1,6 @@
 import { Express } from "express";
 import { createServer, type Server } from "node:http";
+import * as path from "path";
 import { storage } from "./storage";
 import { insertBillSchema } from "@shared/schema";
 
@@ -36,6 +37,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch bills" });
     }
+  });
+
+  // Serve a simple privacy policy page
+  app.get("/privacy-policy", (_req, res) => {
+    const filePath = path.resolve(process.cwd(), "server", "templates", "privacy-policy.html");
+    res.sendFile(filePath);
   });
 
   const httpServer = createServer(app);

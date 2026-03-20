@@ -15,10 +15,11 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-
+import { useTheme } from "@/context/ThemeContext";
 import * as Sharing from "expo-sharing";
 
 export default function WhatsAppScreen() {
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const params = useLocalSearchParams();
@@ -113,33 +114,34 @@ export default function WhatsAppScreen() {
         {
           paddingTop: Platform.OS === "web" ? 67 : insets.top,
           paddingBottom: Platform.OS === "web" ? 34 : insets.bottom,
+          backgroundColor: isDark ? "#111B21" : colors.background,
         },
       ]}
     >
-      <Animated.View style={[styles.whatsappHeader, { opacity: headerOpacity }]}>
+      <Animated.View style={[styles.whatsappHeader, { opacity: headerOpacity, backgroundColor: isDark ? "#1F2C34" : colors.card }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Feather name="arrow-left" size={20} color="#FFFFFF" />
+          <Feather name="arrow-left" size={20} color={isDark ? "#FFFFFF" : colors.text} />
         </TouchableOpacity>
 
         <View style={styles.contactInfo}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons name="account" size={22} color="#A0A0A0" />
+          <View style={[styles.avatar, { backgroundColor: isDark ? "#2A3942" : colors.border }]}>
+            <MaterialCommunityIcons name="account" size={22} color={isDark ? "#A0A0A0" : colors.subtext} />
           </View>
           <View>
-            <Text style={styles.contactName}>Ragu Auto Works</Text>
+            <Text style={[styles.contactName, { color: isDark ? "#E9EDEF" : colors.text }]}>Ragu Auto Works</Text>
             <Text style={styles.contactStatus}>Online</Text>
           </View>
         </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerAction}>
-            <Feather name="phone" size={18} color="#FFFFFF" />
+            <Feather name="phone" size={18} color={isDark ? "#FFFFFF" : colors.text} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerAction}>
-            <Feather name="more-vertical" size={18} color="#FFFFFF" />
+            <Feather name="more-vertical" size={18} color={isDark ? "#FFFFFF" : colors.text} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -159,7 +161,7 @@ export default function WhatsAppScreen() {
             ]}
           >
             {billImageUri ? (
-              <View style={styles.imagePreviewContainer}>
+              <View style={[styles.imagePreviewContainer, { backgroundColor: isDark ? "#1E1E1E" : colors.border }]}>
                 <Image 
                   source={{ uri: billImageUri }} 
                   style={styles.billImagePreview} 
@@ -177,19 +179,19 @@ export default function WhatsAppScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.inputBarMock}>
-        <View style={styles.mockInput}>
-          <Ionicons name="happy-outline" size={22} color="#A0A0A0" />
-          <Text style={styles.mockInputText}>Type a message</Text>
-          <Feather name="paperclip" size={20} color="#A0A0A0" />
-          <Feather name="camera" size={20} color="#A0A0A0" />
+      <View style={[styles.inputBarMock, { backgroundColor: isDark ? "#1F2C34" : colors.card }]}>
+        <View style={[styles.mockInput, { backgroundColor: isDark ? "#2A3942" : colors.border }]}>
+          <Ionicons name="happy-outline" size={22} color={isDark ? "#A0A0A0" : colors.subtext} />
+          <Text style={[styles.mockInputText, { color: isDark ? "#8696A0" : colors.subtext }]}>Type a message</Text>
+          <Feather name="paperclip" size={20} color={isDark ? "#A0A0A0" : colors.subtext} />
+          <Feather name="camera" size={20} color={isDark ? "#A0A0A0" : colors.subtext} />
         </View>
         <TouchableOpacity style={styles.sendButton} onPress={handleSendWhatsApp} activeOpacity={0.85}>
           <MaterialCommunityIcons name="whatsapp" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: isDark ? "#1F2C34" : colors.card }]}>
         <TouchableOpacity
           style={styles.sendWhatsAppButton}
           onPress={handleSendWhatsApp}
@@ -199,12 +201,12 @@ export default function WhatsAppScreen() {
           <Text style={styles.sendWhatsAppText}>Open in WhatsApp</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.shareButton}
+          style={[styles.shareButton, { backgroundColor: isDark ? "#2A3942" : colors.border }]}
           onPress={handleShare}
           activeOpacity={0.85}
         >
-          <Feather name="share-2" size={18} color="#A0A0A0" />
-          <Text style={styles.shareText}>Share</Text>
+          <Feather name="share-2" size={18} color={isDark ? "#A0A0A0" : colors.subtext} />
+          <Text style={[styles.shareText, { color: isDark ? "#A0A0A0" : colors.text }]}>Share</Text>
         </TouchableOpacity>
       </View>
     </View>

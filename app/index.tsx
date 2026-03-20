@@ -11,10 +11,13 @@ import {
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BikeRepairAnimation from "@/components/BikeRepairAnimation";
+import { useTheme } from "@/context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SplashScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
 
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -70,6 +73,7 @@ export default function SplashScreen() {
         {
           paddingTop: Platform.OS === "web" ? 67 : insets.top,
           paddingBottom: Platform.OS === "web" ? 34 : insets.bottom,
+          backgroundColor: colors.background,
         },
       ]}
     >
@@ -81,7 +85,7 @@ export default function SplashScreen() {
           ]}
         >
           <Text style={styles.logo}>Ragu</Text>
-          <Text style={styles.logoSub}>AUTO WORKS</Text>
+          <Text style={[styles.logoSub, { color: colors.text }]}>AUTO WORKS</Text>
           <Animated.View
             style={[
               styles.logoDivider,
@@ -89,7 +93,7 @@ export default function SplashScreen() {
             ]}
           />
           <Animated.Text
-            style={[styles.tagline, { opacity: subtitleOpacity }]}
+            style={[styles.tagline, { opacity: subtitleOpacity, color: colors.subtext }]}
           >
             Sales & Service
           </Animated.Text>
@@ -101,9 +105,9 @@ export default function SplashScreen() {
       </View>
 
       <View style={styles.progressContainer}>
-        <View style={styles.progressTrack}>
+        <View style={[styles.progressTrack, { backgroundColor: colors.accent }]}>
           <Animated.View
-            style={[styles.progressBar, { width: progressWidth }]}
+            style={[styles.progressBar, { width: progressWidth, backgroundColor: colors.primary }]}
           />
         </View>
       </View>
@@ -111,7 +115,7 @@ export default function SplashScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0F0F0F",
@@ -137,7 +141,7 @@ const styles = StyleSheet.create({
   logoSub: {
     fontFamily: "Inter_700Bold",
     fontSize: 28,
-    color: "#FFFFFF",
+    color: colors.text,
     letterSpacing: 6,
     marginTop: -4,
   },
@@ -151,7 +155,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontFamily: "Inter_400Regular",
     fontSize: 14,
-    color: "#A0A0A0",
+    color: colors.subtext,
     letterSpacing: 3,
     textTransform: "uppercase",
   },

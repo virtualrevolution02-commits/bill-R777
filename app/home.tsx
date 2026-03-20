@@ -4,13 +4,12 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  ScrollView,
   TouchableOpacity,
   Animated,
-  Platform,
   FlatList,
   Modal,
   Alert,
+  ScrollView,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { BlurView } from "expo-blur";
@@ -20,7 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useGarage, SparePart } from "@/context/GarageContext";
-import { ALL_PARTS, BRANDS } from "@/constants/parts";
+import { useTheme } from "@/context/ThemeContext";
+import { BikeModeSwitch } from "@/components/BikeModeSwitch";
 
 function PartCard({
   part,
@@ -37,6 +37,8 @@ function PartCard({
   onRemove: () => void;
   onSwipeDelete?: () => void;
 }) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const scale = useRef(new Animated.Value(1)).current;
 
   const handleAdd = () => {
@@ -82,7 +84,7 @@ function PartCard({
         }}
         activeOpacity={0.8}
       >
-        <Animated.View style={{ opacity: trans, transform: [{ scale: trans }] }}>
+        <Animated.View style={[{ opacity: trans, transform: [{ scale: trans }] }, { backgroundColor: colors.primary }]}>
           <Feather name="trash-2" size={24} color="#FFFFFF" />
         </Animated.View>
       </TouchableOpacity>
@@ -90,41 +92,64 @@ function PartCard({
   };
 
   const cardContent = (
-    <Animated.View style={[styles.card, isSelected && styles.cardSelected, { transform: [{ scale }] }]}>
-      <View style={styles.cardMain} pointerEvents="none">
-        <View style={styles.nameContainer}>
-          <Text style={styles.cardName}>
-            {part.name}
-          </Text>
+    <Animated.View style={[{ transform: [{ scale }] }]}>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => {}}
+        style={[
+          styles.card,
+          isSelected && styles.cardSelected,
+          { backgroundColor: colors.card, borderColor: colors.border }
+        ]}
+      >
+        <View style={styles.cardMain} pointerEvents="none">
+          <View style={styles.nameContainer}>
+            <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={2}>
+              {part.name}
+            </Text>
+          </View>
+          <Text style={[styles.cardPrice, { color: colors.secondary }]}>₹{part.price}</Text>
         </View>
-        <Text style={styles.cardPrice}>₹{part.price}</Text>
-      </View>
-      
-      <View style={styles.cardActions} pointerEvents="box-none">
-        {isSelected && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.minusButton]}
-            onPress={handleRemove}
-            activeOpacity={0.7}
-          >
-            <Feather name="minus" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
-        <View style={styles.plusContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, isSelected ? styles.plusButtonActive : styles.plusButton]}
-            onPress={handleAdd}
-            activeOpacity={0.7}
-          >
-            <Feather name="plus" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+        
+        <View style={styles.cardActions} pointerEvents="box-none">
           {isSelected && (
-            <View style={styles.quantityBadge}>
-              <Text style={styles.quantityBadgeText}>{quantity}</Text>
-            </View>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.minusButton,
+                { backgroundColor: colors.accent }
+              ]}
+              onPress={handleRemove}
+              activeOpacity={0.7}
+            >
+              <Feather name="minus" size={18} color={colors.text} />
+            </TouchableOpacity>
           )}
+
+          <View style={styles.plusContainer}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isSelected ? styles.plusButtonActive : styles.plusButton,
+                isSelected ? { backgroundColor: colors.primary } : { backgroundColor: colors.accent }
+              ]}
+              onPress={handleAdd}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name={isSelected ? "check" : "plus"}
+                size={18}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+            {isSelected && (
+              <View style={[styles.quantityBadge, { backgroundColor: colors.secondary }]}>
+                <Text style={styles.quantityBadgeText}>{quantity}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 
@@ -138,14 +163,44 @@ function PartCard({
 }
 
 export default function HomeScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
-  const { addToCart, decreaseQuantity, cart, grandTotal } = useGarage();
+  const { 
+    addToCart, 
+    decreaseQuantity, 
+    cart, 
+    grandTotal, 
+    businessDetails,
+    updateBusinessDetails
+  } = useGarage();
   const [search, setSearch] = useState("");
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isMenuOpen, setMenuOpen] = useState(false);
-  const [recentParts, setRecentParts] = useState<SparePart[]>([]);
   const [hiddenParts, setHiddenParts] = useState<string[]>([]);
+  const [recentParts, setRecentParts] = useState<SparePart[]>([]);
+
+  const [isLabourModalVisible, setLabourModalVisible] = useState(false);
+  const [labourName, setLabourName] = useState("");
+  const [labourPrice, setLabourPrice] = useState("");
+
+  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
+  
+  // Profile state
+  const [pOwner, setPOwner] = useState(businessDetails.ownerName);
+  const [pShop, setPShop] = useState(businessDetails.shopName);
+  const [pAddress, setPAddress] = useState(businessDetails.shopAddress);
+  const [pPhone, setPPhone] = useState(businessDetails.phoneNumbers);
+  const [pInsta, setPInsta] = useState(businessDetails.instagramId);
+
+  // Sync profile state when context changes
+  React.useEffect(() => {
+    setPOwner(businessDetails.ownerName);
+    setPShop(businessDetails.shopName);
+    setPAddress(businessDetails.shopAddress);
+    setPPhone(businessDetails.phoneNumbers);
+    setPInsta(businessDetails.instagramId);
+  }, [businessDetails]);
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -199,32 +254,35 @@ export default function HomeScreen() {
   };
 
   const combinedParts = useMemo(() => {
-    return [...recentParts, ...ALL_PARTS].filter(p => !hiddenParts.includes(p.id));
+    return recentParts.filter(p => !hiddenParts.includes(p.id));
   }, [recentParts, hiddenParts]);
 
-  const allBrands = useMemo(() => ["Recent", ...BRANDS], []);
+  const { addLabour } = useGarage();
 
-  const categories = useMemo(() => {
-    if (!selectedBrand) return [];
-    if (selectedBrand === "Recent") return [];
-    return Array.from(new Set(combinedParts.filter(p => p.brand === selectedBrand).map(p => p.category)));
-  }, [selectedBrand, combinedParts]);
+  const submitLabourItem = () => {
+    if (!labourName.trim()) {
+      Alert.alert("Error", "Please enter a name for the labour.");
+      return;
+    }
+    addLabour({
+      id: `custom-labour-${Date.now()}`,
+      name: labourName,
+      price: parseInt(labourPrice) || 0,
+    });
+    setLabourModalVisible(false);
+    setLabourName("");
+    setLabourPrice("");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const getCartItem = (id: string) => cart.find((c) => c.id === id);
 
   const filtered = useMemo(() => {
     return combinedParts.filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-      const matchesBrand = !selectedBrand || p.brand === selectedBrand;
-      const matchesCategory = !selectedCategory || p.category === selectedCategory;
-      
-      // If searching, show across all categories of selected brand
-      if (search) return matchesSearch && matchesBrand;
-      
-      // Default hierarchical view
-      return matchesBrand && matchesCategory;
+      return matchesSearch;
     });
-  }, [search, selectedBrand, selectedCategory, combinedParts]);
-
-  const getCartItem = (id: string) => cart.find((c) => c.id === id);
+  }, [search, combinedParts]);
 
   const handleDoubleTapItem = (itemToRemove: SparePart) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -272,106 +330,119 @@ export default function HomeScreen() {
       style={[
         styles.container,
         {
-          paddingTop: Platform.OS === "web" ? 67 : insets.top,
-          paddingBottom: Platform.OS === "web" ? 34 : insets.bottom,
+          paddingTop: insets.top,
+          backgroundColor: colors.background
         },
       ]}
     >
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Ragu</Text>
-          <Text style={styles.headerSubtitle}>Auto Works</Text>
+          <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {businessDetails.shopName.split(' ')[0].toUpperCase()}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.text }]} numberOfLines={1}>
+            {businessDetails.shopName.split(' ').slice(1).join(' ').toUpperCase() || "AUTO WORKS"}
+          </Text>
           <Text style={styles.headerTagline}>Sales & Service</Text>
         </View>
-        <View style={{ position: "relative", zIndex: 10 }}>
-          <TouchableOpacity 
-            style={styles.menuButton} 
+
+        <View style={styles.headerRight}>
+          <BikeModeSwitch />
+          <TouchableOpacity
+            style={[styles.menuButton, { backgroundColor: colors.card }]}
             onPress={() => setMenuOpen(!isMenuOpen)}
           >
-            <Feather name="more-vertical" size={22} color="#FFFFFF" />
+            <Feather name="more-vertical" size={24} color={colors.text} />
           </TouchableOpacity>
-          {isMenuOpen && (
-            <View style={styles.dropdownMenu}>
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/history");
-                }}
-              >
-                <Feather name="clock" size={16} color="#A0A0A0" />
-                <Text style={styles.dropdownText}>History</Text>
-              </TouchableOpacity>
-              <View style={{ height: 1, backgroundColor: "rgba(255, 255, 255, 0.05)", marginHorizontal: 12 }} />
-              <TouchableOpacity 
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push("/earnings");
-                }}
-              >
-                <Feather name="trending-up" size={16} color="#FFC107" />
-                <Text style={styles.dropdownText}>Earnings</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color="#666666" style={styles.searchIcon} />
+        {isMenuOpen && (
+          <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push("/history");
+              }}
+            >
+              <Feather name="clock" size={18} color={colors.text} />
+              <Text style={[styles.dropdownText, { color: colors.text }]}>History</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
+
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => {
+                setMenuOpen(false);
+                router.push("/earnings");
+              }}
+            >
+              <Ionicons name="stats-chart" size={18} color={colors.text} />
+              <Text style={[styles.dropdownText, { color: colors.text }]}>Earnings</Text>
+            </TouchableOpacity>
+            
+            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
+
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => {
+                setMenuOpen(false);
+                setShowProfileDetails(false); // Start with card view
+                setProfileModalVisible(true);
+              }}
+            >
+              <Feather name="user" size={18} color={colors.text} />
+              <Text style={[styles.dropdownText, { color: colors.text }]}>Profile</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+      <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+        <Feather name="search" size={20} color={colors.subtext} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search spare parts"
-          placeholderTextColor="#666666"
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder="Search spare parts..."
+          placeholderTextColor={colors.subtext}
           value={search}
           onChangeText={setSearch}
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch("")}>
-            <Feather name="x" size={16} color="#666666" />
+            <Feather name="x" size={16} color={colors.subtext} />
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.brandContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.brandScroll}>
-          {allBrands.map((brand) => (
-            <TouchableOpacity
-              key={brand}
-              style={[styles.brandTab, selectedBrand === brand && styles.brandTabSelected]}
-              onPress={() => {
-                setSelectedBrand(brand);
-                setSelectedCategory(null);
-              }}
-            >
-              <Text style={[styles.brandTabText, selectedBrand === brand && styles.brandTabTextSelected]}>
-                {brand}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      <View style={styles.quickAddRow}>
+        <TouchableOpacity 
+          style={[styles.quickAddButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            setCustomName("");
+            setCustomPrice("");
+            setModalVisible(true);
+          }}
+        >
+          <Feather name="plus-circle" size={18} color={colors.secondary} />
+          <Text style={[styles.quickAddText, { color: colors.text }]}>Item</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.quickAddButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => setLabourModalVisible(true)}
+        >
+          <Feather name="tool" size={18} color={colors.secondary} />
+          <Text style={[styles.quickAddText, { color: colors.text }]}>Labour</Text>
+        </TouchableOpacity>
       </View>
 
-      {selectedBrand && !search && (
-        <View style={styles.categoryContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryTab, selectedCategory === cat && styles.categoryTabSelected]}
-                onPress={() => setSelectedCategory(cat)}
-              >
-                <Text style={[styles.categoryTabText, selectedCategory === cat && styles.categoryTabTextSelected]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionHeaderText, { color: colors.subtext }]}>
+          {search ? "Results" : "Recent Items"}
+        </Text>
+      </View>
 
-      {selectedBrand || search ? (
+      {filtered.length > 0 ? (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
@@ -415,28 +486,214 @@ export default function HomeScreen() {
         />
       ) : (
         <View style={styles.emptyState}>
-          <Feather name="layers" size={48} color="#444444" />
-          <Text style={styles.emptyText}>Select a bike brand to view parts</Text>
+          <Feather name="plus-circle" size={48} color={isDark ? "#444" : "#BBB"} />
+          <Text style={[styles.emptyText, { color: colors.subtext }]}>
+            Tap &quot;+&quot; to add items manually
+          </Text>
         </View>
       )}
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.nextButton, cart.length === 0 && styles.nextButtonDisabled]}
+          style={[
+            styles.nextButton, 
+            cart.length === 0 && styles.nextButtonDisabled,
+            { backgroundColor: isDark ? colors.card : "#E53935" }
+          ]}
           onPress={handleNext}
           activeOpacity={0.85}
         >
           {cartCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cartCount}</Text>
+            <View style={[styles.cartBadge, { backgroundColor: isDark ? colors.primary : "#FFFFFF" }]}>
+              <Text style={[styles.cartBadgeText, { color: isDark ? "#FFFFFF" : "#E53935" }]}>{cartCount}</Text>
             </View>
           )}
-          <Text style={styles.nextButtonText}>NEXT →</Text>
+          <Text style={[styles.nextButtonText, { color: "#FFFFFF" }]}>NEXT →</Text>
           {cart.length > 0 && (
-            <Text style={styles.nextButtonSubtext}>₹{grandTotal}</Text>
+            <Text style={[styles.nextButtonSubtext, { color: isDark ? colors.secondary : "#FFFFFF" }]}>₹{grandTotal}</Text>
           )}
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={isLabourModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLabourModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Add Labour</Text>
+              <TouchableOpacity onPress={() => setLabourModalVisible(false)}>
+                <Feather name="x" size={24} color={colors.subtext} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Name</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                placeholder="e.g. Engine Service"
+                placeholderTextColor={colors.subtext}
+                value={labourName}
+                onChangeText={setLabourName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Cost (₹)</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                placeholder="0"
+                placeholderTextColor={colors.subtext}
+                value={labourPrice}
+                onChangeText={setLabourPrice}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
+              onPress={submitLabourItem}
+            >
+              <Text style={styles.submitCustomButtonText}>Add Labour</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isProfileModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          {!showProfileDetails ? (
+            <TouchableOpacity 
+              activeOpacity={0.9}
+              onPress={() => setShowProfileDetails(true)}
+              style={[styles.profileCardFull, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <View style={styles.profileCardHeader}>
+                <View style={[styles.profileIconContainer, { backgroundColor: colors.primary }]}>
+                  <Feather name="shield" size={32} color="#FFFFFF" />
+                </View>
+                <TouchableOpacity 
+                  style={styles.profileCloseTop}
+                  onPress={() => setProfileModalVisible(false)}
+                >
+                  <Feather name="x" size={24} color={colors.subtext} />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={[styles.profileShopTitle, { color: colors.text }]}>{businessDetails.shopName}</Text>
+              <Text style={[styles.profileShopOwner, { color: colors.subtext }]}>Owner: {businessDetails.ownerName}</Text>
+              
+              <View style={styles.profileCardDivider} />
+              
+              <View style={styles.tapToEdit}>
+                <Feather name="edit-3" size={14} color={colors.primary} />
+                <Text style={[styles.tapToEditText, { color: colors.primary }]}>TAP TO EDIT DETAILS</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: '80%' }]}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setShowProfileDetails(false)}>
+                  <Feather name="arrow-left" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginLeft: 12 }]}>Edit Profile</Text>
+                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                  <Feather name="x" size={24} color={colors.subtext} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. My Workshop"
+                    placeholderTextColor={colors.subtext}
+                    value={pShop}
+                    onChangeText={setPShop}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Owner Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. Ragu"
+                    placeholderTextColor={colors.subtext}
+                    value={pOwner}
+                    onChangeText={setPOwner}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Address</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border, height: 60 }]}
+                    placeholder="Full address"
+                    placeholderTextColor={colors.subtext}
+                    value={pAddress}
+                    onChangeText={setPAddress}
+                    multiline
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Phone Number(s)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor={colors.subtext}
+                    value={pPhone}
+                    onChangeText={setPPhone}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Instagram Handle</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="@your_handle"
+                    placeholderTextColor={colors.subtext}
+                    value={pInsta}
+                    onChangeText={setPInsta}
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.submitCustomButton, { backgroundColor: colors.primary, marginTop: 10 }]}
+                  onPress={async () => {
+                     try {
+                       await updateBusinessDetails({
+                         ownerName: pOwner,
+                         shopName: pShop,
+                         shopAddress: pAddress,
+                         phoneNumbers: pPhone,
+                         instagramId: pInsta
+                       });
+                       setProfileModalVisible(false);
+                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                   } catch {
+                     Alert.alert("Error", "Failed to save profile.");
+                   }
+                  }}
+                >
+                  <Text style={styles.submitCustomButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      </Modal>
 
       <Modal
         visible={isModalVisible}
@@ -445,32 +702,32 @@ export default function HomeScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={styles.modalContent}>
+          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Custom Item</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Add Item</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Feather name="x" size={24} color="#A0A0A0" />
+                <Feather name="x" size={24} color={colors.subtext} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Item Name</Text>
+              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Item Name</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                 placeholder="Enter item name"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.subtext}
                 value={customName}
                 onChangeText={setCustomName}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Price (₹)</Text>
+              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Price (₹)</Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
                 placeholder="0"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.subtext}
                 value={customPrice}
                 onChangeText={setCustomPrice}
                 keyboardType="numeric"
@@ -478,7 +735,7 @@ export default function HomeScreen() {
             </View>
 
             <TouchableOpacity 
-              style={styles.submitCustomButton}
+              style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
               onPress={submitCustomItem}
             >
               <Text style={styles.submitCustomButtonText}>Add to Bill</Text>
@@ -490,10 +747,10 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F0F0F",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -511,13 +768,13 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 18,
-    color: "#FFFFFF",
+    color: colors.text,
     marginTop: -4,
   },
   headerTagline: {
     fontFamily: "Inter_400Regular",
     fontSize: 10,
-    color: "#666",
+    color: colors.subtext,
     letterSpacing: 1,
     textTransform: "uppercase",
     marginTop: 2,
@@ -526,25 +783,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   dropdownMenu: {
     position: "absolute",
     top: 50,
     right: 0,
-    backgroundColor: "#1E1E1E",
     borderRadius: 12,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "#2C2C2C",
+    borderColor: colors.border,
     paddingVertical: 8,
     minWidth: 140,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: isDark ? 0.3 : 0.1,
     shadowRadius: 8,
     elevation: 5,
+    zIndex: 100,
   },
   dropdownItem: {
     flexDirection: "row",
@@ -556,17 +818,19 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontFamily: "Inter_500Medium",
     fontSize: 15,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 14,
     marginHorizontal: 16,
     marginBottom: 16,
     paddingHorizontal: 14,
     height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   searchIcon: {
     marginRight: 10,
@@ -575,7 +839,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: "Inter_400Regular",
     fontSize: 15,
-    color: "#FFFFFF",
+    color: colors.text,
     height: 48,
   },
   scrollContent: {
@@ -584,18 +848,18 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#2C2C2C",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 110,
   },
   cardSelected: {
-    borderColor: "#E53935",
-    backgroundColor: "#251B1B",
+    borderColor: colors.primary,
+    backgroundColor: isDark ? "#251B1B" : "#FEECEB",
   },
   cardMain: {
     alignItems: "flex-start",
@@ -613,7 +877,7 @@ const styles = StyleSheet.create({
   cardName: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.text,
     textAlign: "left",
     lineHeight: 22,
   },
@@ -645,12 +909,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 4,
     borderWidth: 1.5,
-    borderColor: "#1E1E1E",
+    borderColor: colors.card,
   },
   quantityBadgeText: {
     fontFamily: "Inter_800ExtraBold",
     fontSize: 10,
-    color: "#000000",
+    color: "#FFFFFF",
   },
   actionButton: {
     width: 36,
@@ -660,13 +924,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   plusButton: {
-    backgroundColor: "#333333",
+    backgroundColor: colors.accent,
   },
   plusButtonActive: {
-    backgroundColor: "#E53935",
+    backgroundColor: colors.primary,
   },
   minusButton: {
-    backgroundColor: "#444444",
+    backgroundColor: colors.accent,
   },
   swipeContainer: {
     marginBottom: 12,
@@ -685,8 +949,39 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
   },
-  brandContainer: {
+  quickAddRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  quickAddButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.card,
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickAddText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: colors.text,
+  },
+  sectionHeader: {
+    paddingHorizontal: 18,
     marginBottom: 8,
+  },
+  sectionHeaderText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    color: "#444",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   brandScroll: {
     paddingHorizontal: 16,
@@ -696,9 +991,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: "#2C2C2C",
+    borderColor: colors.border,
   },
   brandTabSelected: {
     backgroundColor: "#E53935",
@@ -723,9 +1018,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: "#161616",
+    backgroundColor: colors.accent,
     borderWidth: 1,
-    borderColor: "#222222",
+    borderColor: colors.border,
   },
   categoryTabSelected: {
     borderColor: "#FFC107",
@@ -737,7 +1032,7 @@ const styles = StyleSheet.create({
     color: "#666666",
   },
   categoryTabTextSelected: {
-    color: "#FFC107",
+    color: colors.secondary,
   },
   emptyState: {
     alignItems: "center",
@@ -748,7 +1043,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "Inter_400Regular",
     fontSize: 15,
-    color: "#666666",
+    color: colors.subtext,
   },
   footer: {
     paddingHorizontal: 16,
@@ -756,14 +1051,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   nextButton: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 20,
     height: 60,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#2C2C2C",
+    borderColor: colors.border,
     gap: 8,
     position: "relative",
     overflow: "hidden",
@@ -788,19 +1083,19 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontFamily: "Inter_700Bold",
     fontSize: 15,
-    color: "#FFFFFF",
+    color: colors.text,
     letterSpacing: 2,
   },
   nextButtonSubtext: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
-    color: "#FFC107",
+    color: colors.secondary,
   },
   addCustomButtonEmpty: {
     marginTop: 16,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E53935",
@@ -813,15 +1108,17 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     padding: 20,
     backgroundColor: "rgba(0,0,0,0.6)",
   },
   modalContent: {
-    backgroundColor: "#1E1E1E",
+    width: "100%",
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: colors.border,
   },
   modalHeader: {
     flexDirection: "row",
@@ -832,7 +1129,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: "Inter_700Bold",
     fontSize: 20,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   inputGroup: {
     marginBottom: 16,
@@ -844,12 +1141,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalInput: {
-    backgroundColor: "#0F0F0F",
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 16,
-    color: "#FFFFFF",
+    color: colors.text,
     fontFamily: "Inter_500Medium",
     fontSize: 16,
   },
@@ -864,5 +1161,71 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 16,
     color: "#FFFFFF",
+  },
+  profileCardFull: {
+    width: "100%",
+    padding: 30,
+    borderRadius: 28,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+  },
+  profileCardHeader: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+    position: "relative",
+  },
+  profileIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  profileCloseTop: {
+    position: "absolute",
+    right: 15,
+    top: 15,
+    padding: 8,
+  },
+  profileShopTitle: {
+    fontFamily: "Inter_800ExtraBold",
+    fontSize: 24,
+    textAlign: "center",
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  profileShopOwner: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 16,
+    textAlign: "center",
+    opacity: 0.8,
+  },
+  profileCardDivider: {
+    width: "40%",
+    height: 1,
+    backgroundColor: "rgba(150,150,150,0.2)",
+    marginVertical: 24,
+  },
+  tapToEdit: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    opacity: 0.9,
+  },
+  tapToEditText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    letterSpacing: 1,
   },
 });

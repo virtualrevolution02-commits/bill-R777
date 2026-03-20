@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -19,6 +19,14 @@ export type LabourItem = {
   price: number;
 };
 
+export type BusinessDetails = {
+  ownerName: string;
+  shopName: string;
+  shopAddress: string;
+  phoneNumbers: string;
+  instagramId: string;
+};
+
 type GarageContextType = {
   cart: CartItem[];
   addToCart: (part: SparePart) => void;
@@ -29,6 +37,7 @@ type GarageContextType = {
   advanceAmount: number;
   setAdvanceAmount: (amount: number) => void;
   labourItems: LabourItem[];
+  labourTotal: number;
   addLabour: (item: LabourItem) => void;
   removeLabour: (id: string) => void;
   updatePartPrice: (id: string, price: number) => void;
@@ -48,6 +57,8 @@ type GarageContextType = {
   setNextMeter: (val: string) => void;
   loadBill: (bill: any) => void;
   nextBillNumber: number;
+  businessDetails: BusinessDetails;
+  updateBusinessDetails: (details: BusinessDetails) => Promise<void>;
 };
 
 const GarageContext = createContext<GarageContextType | null>(null);
@@ -64,6 +75,37 @@ export function GarageProvider({ children }: { children: ReactNode }) {
   const [lastMeter, setLastMeter] = useState("");
   const [nextMeter, setNextMeter] = useState("");
   const [nextBillNumber, setNextBillNumber] = useState(1);
+  const [businessDetails, setBusinessDetails] = useState<BusinessDetails>({
+    ownerName: "Ragu",
+    shopName: "Ragu Auto Works",
+    shopAddress: "No 2B Vijaya Mangalam Sandagatai Road, Erode-638856",
+    phoneNumbers: "8526808766, 8438597688",
+    instagramId: "@dr._duker",
+  });
+
+  useEffect(() => {
+    const initBusiness = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("business_details");
+        if (stored) {
+          setBusinessDetails(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.error("Failed to load business details", err);
+      }
+    };
+    initBusiness();
+  }, []);
+
+  const updateBusinessDetails = async (details: BusinessDetails) => {
+    try {
+      setBusinessDetails(details);
+      await AsyncStorage.setItem("business_details", JSON.stringify(details));
+    } catch (err) {
+      console.error("Failed to save business details", err);
+      throw err;
+    }
+  };
 
   React.useEffect(() => {
     const fetchNextBillNumber = async () => {
@@ -244,6 +286,7 @@ export function GarageProvider({ children }: { children: ReactNode }) {
         clearCart,
         cartTotal,
         labourItems,
+        labourTotal,
         addLabour,
         removeLabour,
         updatePartPrice,
@@ -265,6 +308,8 @@ export function GarageProvider({ children }: { children: ReactNode }) {
         setNextMeter,
         loadBill,
         nextBillNumber,
+        businessDetails,
+        updateBusinessDetails,
       }}
     >
       {children}

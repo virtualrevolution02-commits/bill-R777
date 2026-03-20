@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,18 +15,23 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { GarageProvider } from "@/context/GarageContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
+  const { theme } = useTheme();
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="home" options={{ animation: "fade" }} />
-      <Stack.Screen name="bill" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="whatsapp" options={{ animation: "slide_from_right" }} />
-      <Stack.Screen name="earnings" options={{ animation: "slide_from_right" }} />
-    </Stack>
+    <>
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="home" options={{ animation: "fade" }} />
+        <Stack.Screen name="bill" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="whatsapp" options={{ animation: "slide_from_right" }} />
+        <Stack.Screen name="earnings" options={{ animation: "slide_from_right" }} />
+      </Stack>
+    </>
   );
 }
 
@@ -50,9 +56,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
-            <GarageProvider>
-              <RootLayoutNav />
-            </GarageProvider>
+            <ThemeProvider>
+              <GarageProvider>
+                <RootLayoutNav />
+              </GarageProvider>
+            </ThemeProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
       </QueryClientProvider>

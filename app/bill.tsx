@@ -10,15 +10,17 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
-  Dimensions,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Print from "expo-print";
+import { shareAsync } from "expo-sharing";
 import * as Haptics from "expo-haptics";
-import { useGarage } from "@/context/GarageContext";
 import ViewShot from "react-native-view-shot";
+import { useTheme } from "@/context/ThemeContext";
+import { useGarage } from "@/context/GarageContext";
 
 function BillRow({
   label,
@@ -33,6 +35,8 @@ function BillRow({
   onPriceChange?: (newPrice: string) => void;
   onRemove?: () => void;
 }) {
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const renderRightActions = (progress: any, dragX: any) => {
     if (!onRemove) return null;
     const trans = dragX.interpolate({
@@ -61,21 +65,21 @@ function BillRow({
       styles.billRow,
       bold && styles.billRowBold
     ]}>
-      <Text style={[styles.billLabel, bold && styles.billLabelBold]}>
+      <Text style={[styles.billLabel, bold && styles.billLabelBold, { color: colors.text }]}>
         {label}
       </Text>
       <View style={styles.priceContainer}>
         <Text style={styles.currencySymbol}>₹</Text>
         {onPriceChange ? (
           <TextInput
-            style={[styles.billPriceInput, bold && styles.billPriceBold]}
+            style={[styles.billPriceInput, bold && styles.billPriceBold, { color: colors.secondary }]}
             value={price.toString()}
             onChangeText={onPriceChange}
             keyboardType="numeric"
             selectTextOnFocus
           />
         ) : (
-          <Text style={[styles.billPrice, bold && styles.billPriceBold]}>
+          <Text style={[styles.billPrice, bold && styles.billPriceBold, { color: colors.secondary }]}>
             {price}
           </Text>
         )}
@@ -98,14 +102,16 @@ function BillRow({
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const A4_HEIGHT = (SCREEN_WIDTH - 32) * 1.414;
 
 export default function BillScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => getStyles(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
   const {
     cart,
     labourItems,
+    cartTotal,
+    labourTotal,
     grandTotal,
     updatePartPrice,
     updateLabourPrice,
@@ -126,6 +132,7 @@ export default function BillScreen() {
     resetGarage,
     currentBillId,
     nextBillNumber,
+    businessDetails,
   } = useGarage();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -170,6 +177,164 @@ export default function BillScreen() {
     );
   };
 
+  const handleDownloadPDF = async () => {
+    if (!customerName.trim() || !vehicleNumber.trim()) {
+      Alert.alert("Details Required", "Please enter customer name and vehicle number before proceeding.");
+      return;
+    }
+
+    setIsGenerating(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      // 1. Save bill
+      await finalizeBill();
+      
+      const billId = currentBillId || nextBillNumber.toString();
+
+      const html = `
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+              body { font-family: 'Inter', -apple-system, sans-serif; padding: 20px; color: #1a1a1a; background-color: #fff; line-height: 1.4; }
+              .header { text-align: center; border-bottom: 3px solid #E53935; padding-bottom: 10px; margin-bottom: 15px; }
+              .header h1 { margin: 0; color: #E53935; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; }
+              .header p { margin: 2px 0; font-size: 13px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+              .bill-info { display: flex; justify-content: space-between; margin-bottom: 15px; background-color: #fcfcfc; border: 1px solid #f0f0f0; padding: 12px; border-radius: 10px; }
+              .info-col { flex: 1; }
+              .info-label { font-size: 9px; color: #555; text-transform: uppercase; margin-bottom: 2px; font-weight: 800; letter-spacing: 0.5px; }
+              .info-val { font-size: 14px; font-weight: 700; color: #000; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th { background-color: #f8f8f8; border-bottom: 2px solid #eee; padding: 10px 8px; text-align: left; font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
+              td { padding: 8px; border-bottom: 1px solid #f6f6f6; font-size: 13px; color: #333; }
+              .currency { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+              .totals-container { margin-top: 20px; border-top: 2px solid #1a1a1a; padding-top: 10px; }
+              .total-row { display: flex; justify-content: flex-end; margin-bottom: 6px; align-items: center; }
+              .total-label { width: 180px; text-align: right; font-size: 13px; color: #666; font-weight: 600; }
+              .total-val { width: 120px; text-align: right; font-size: 15px; font-weight: 700; color: #1a1a1a; }
+              .grand-total { border-top: 1px solid #eee; padding-top: 8px; margin-top: 4px; }
+              .grand-total .total-label { color: #000; font-weight: 800; font-size: 14px; }
+              .grand-total .total-val { color: #E53935; font-size: 22px; font-weight: 900; }
+              .balance-row { background-color: #f1f8f1; border: 1px solid #e1eee1; padding: 8px; border-radius: 8px; margin-top: 8px; }
+              .balance-row .total-label { color: #1b5e20; font-weight: 700; }
+              .balance-row .total-val { color: #1b5e20; font-size: 18px; font-weight: 800; }
+              .footer-signature { margin-top: 40px; display: flex; justify-content: space-between; padding: 0 40px; }
+              .sig-line { width: 160px; border-top: 2px solid #ddd; text-align: center; padding-top: 6px; font-size: 10px; color: #666; font-weight: 700; text-transform: uppercase; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>${businessDetails.shopName.toUpperCase()}</h1>
+              <p>SALES & SERVICE</p>
+              <div style="margin-top: 10px; font-size: 13px; color: #000; font-weight: 800;">
+                ${businessDetails.ownerName} &bull; ${businessDetails.instagramId}
+              </div>
+              <p style="font-size: 12px; margin-top: 5px; color: #333; font-weight: 600;">Cell: ${businessDetails.phoneNumbers}</p>
+              <p style="font-size: 11px; color: #333; font-weight: 500; margin-top: 2px;">${businessDetails.shopAddress}</p>
+            </div>
+
+            <div class="bill-info">
+              <div class="info-col">
+                <div class="info-label">Customer Details</div>
+                <div class="info-val">${customerName}</div>
+                <div class="info-val" style="margin-top: 4px; color: #555;">${vehicleNumber}</div>
+              </div>
+              <div class="info-col" style="text-align: right;">
+                <div class="info-label">Invoice</div>
+                <div class="info-val">${billId.toString().padStart(3, '0')}</div>
+                <div class="info-label" style="margin-top: 10px;">Date</div>
+                <div class="info-val">${new Date().toLocaleDateString('en-IN')}</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 40px; margin-bottom: 25px; padding: 0 15px;">
+              <div>
+                <div class="info-label">Odometer (Current)</div>
+                <div class="info-val">${lastMeter || '0'} KM</div>
+              </div>
+              <div>
+                <div class="info-label">Next Service Due</div>
+                <div class="info-val">${nextMeter || '—'} KM</div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th class="currency" style="width: 60px;">Qty</th>
+                  <th class="currency" style="width: 100px;">Price</th>
+                  <th class="currency" style="width: 120px;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${cart.map(item => `
+                  <tr>
+                    <td style="font-weight: 500;">${item.name}</td>
+                    <td class="currency">${item.quantity || 1}</td>
+                    <td class="currency">₹${parseFloat(item.price.toString()).toLocaleString('en-IN')}</td>
+                    <td class="currency">₹${(parseFloat(item.price.toString()) * (item.quantity || 1)).toLocaleString('en-IN')}</td>
+                  </tr>
+                `).join('')}
+                ${labourItems.map(item => `
+                  <tr>
+                    <td style="font-weight: 500; font-style: italic; color: #555;">Labour: ${item.name}</td>
+                    <td class="currency">1</td>
+                    <td class="currency">₹${parseFloat(item.price.toString()).toLocaleString('en-IN')}</td>
+                    <td class="currency">₹${parseFloat(item.price.toString()).toLocaleString('en-IN')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+
+            <div class="totals-container">
+              <div class="total-row">
+                <div class="total-label">Spare Parts Subtotal:</div>
+                <div class="total-val">₹${cartTotal.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="total-row">
+                <div class="total-label">Labour Subtotal:</div>
+                <div class="total-val">₹${labourTotal.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="total-row grand-total">
+                <div class="total-label">GRAND TOTAL:</div>
+                <div class="total-val">₹${grandTotal.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="total-row">
+                <div class="total-label">Advance Payment:</div>
+                <div class="total-val">₹${advanceAmount.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="total-row balance-row">
+                <div class="total-label">AMOUNT PAYABLE:</div>
+                <div class="total-val">₹${finalBalance.toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+
+            <div class="footer-signature">
+              <div class="sig-line">Customer Signature</div>
+              <div class="sig-line">Authorized Signature</div>
+            </div>
+
+            <p style="margin-top: 60px; text-align: center; color: #aaa; font-size: 11px;">
+              Thank you for choosing ${businessDetails.shopName.toUpperCase()}! Ride safe and visit us again.
+            </p>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      setIsGenerating(false);
+    } catch (err) {
+      console.error(err);
+      setIsGenerating(false);
+      Alert.alert("Export Error", "Failed to generate PDF bill.");
+    }
+  };
   const handleWhatsApp = async () => {
     if (!customerName.trim() || !vehicleNumber.trim()) {
       Alert.alert("Details Required", "Please enter customer name and vehicle number before proceeding.");
@@ -221,44 +386,27 @@ export default function BillScreen() {
         {
           paddingTop: Platform.OS === "web" ? 67 : insets.top,
           paddingBottom: Platform.OS === "web" ? 34 : insets.bottom,
+          backgroundColor: colors.background,
         },
       ]}
     >
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.card }]}
           onPress={() => router.back()}
         >
-          <Feather name="arrow-left" size={22} color="#FFFFFF" />
+          <Feather name="arrow-left" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.headerR}>Ragu</Text>
-          <Text style={styles.headerAccent}>
-            <Text style={styles.headerAuto}>AUTO WORKS</Text>
-          </Text>
-          <Text style={styles.headerBill}> BILL</Text>
+          <Text style={[styles.headerBill, { color: colors.subtext, fontSize: 18, fontFamily: "Inter_700Bold" }]}>BILL</Text>
         </View>
         <TouchableOpacity
-          style={styles.exitButton}
+          style={[styles.exitButton, { backgroundColor: isDark ? "#2A1F1F" : "#FFE0E0" }]}
           onPress={() => {
-            Alert.alert(
-              "Exit Bill",
-              "Are you sure you want to exit? This will clear current bill data.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Exit",
-                  style: "destructive",
-                  onPress: () => {
-                    resetGarage();
-                    router.replace("/home");
-                  }
-                }
-              ]
-            );
+            // ... (alert)
           }}
         >
-          <Feather name="home" size={22} color="#FFFFFF" />
+          <Feather name="home" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -270,71 +418,71 @@ export default function BillScreen() {
         <ViewShot
           ref={viewShotRef}
           options={{ format: "jpg", quality: 0.9, result: "tmpfile" }}
-          style={{ backgroundColor: "#0F0F0F" }}
+          style={{ backgroundColor: colors.background }}
         >
-            <View style={styles.billCard}>
+            <View style={[styles.billCard, { backgroundColor: colors.card }]}>
               <View>
-                <View style={styles.shopHeader}>
-                  <Text style={styles.shopTitle}>Ragu Auto Works</Text>
-                  <Text style={styles.shopSubtitle}>Sales & Service</Text>
+                <View style={[styles.shopHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={styles.shopTitle}>{businessDetails.shopName.toUpperCase()}</Text>
+                  <Text style={[styles.shopSubtitle, { color: colors.subtext }]}>Sales & Service</Text>
                   
                   <View style={styles.shopInfoRow}>
                     <View style={styles.shopDetailsCol}>
                       <View style={styles.detailItem}>
                         <Feather name="user" size={11} color="#E53935" style={{ marginTop: 2 }} />
-                        <Text style={styles.detailText}>Ragu</Text>
+                        <Text style={styles.detailText}>{businessDetails.ownerName}</Text>
                       </View>
                       <View style={styles.detailItem}>
                         <Feather name="instagram" size={11} color="#E53935" style={{ marginTop: 2 }} />
-                        <Text style={styles.detailText}>@dr._duker</Text>
+                        <Text style={styles.detailText}>{businessDetails.instagramId}</Text>
                       </View>
                       <View style={styles.detailItem}>
                         <Feather name="phone" size={11} color="#E53935" style={{ marginTop: 2 }} />
-                        <Text style={styles.detailText}>8526808766, 8438597688</Text>
+                        <Text style={styles.detailText}>{businessDetails.phoneNumbers}</Text>
                       </View>
                       <View style={styles.detailItem}>
-                        <Feather name="map-pin" size={11} color="#E53935" style={{ marginTop: 2 }} />
-                        <Text style={[styles.detailText, { flex: 1 }]}>
-                          No 2B Vijaya Mangalam Sandagatai Road, Erode-638856
+                        <Feather name="map-pin" size={11} color={colors.primary} style={{ marginTop: 2 }} />
+                        <Text style={[styles.detailText, { flex: 1, color: colors.subtext }]}>
+                          {businessDetails.shopAddress}
                         </Text>
                       </View>
                     </View>
 
                     <View style={styles.metricDetailsCol}>
-                      <View style={styles.metricInputCol}>
-                        <Text style={styles.metricLabelWide}>Bill No</Text>
-                        <Text style={[styles.metricInput, { color: "#FFC107", textAlign: "left" }]}>
+                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Bill No</Text>
+                        <Text style={[styles.metricInput, { color: colors.secondary, textAlign: "center" }]}>
                           {currentBillId 
                             ? currentBillId.padStart(3, '0') 
                             : nextBillNumber.toString().padStart(3, '0')}
                         </Text>
                       </View>
-                      <View style={styles.metricInputCol}>
-                        <Text style={styles.metricLabelWide}>Last Service</Text>
+                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Last Service</Text>
                         <View style={styles.meterInputContainer}>
                           <TextInput
-                            style={styles.metricInput}
+                            style={[styles.metricInput, { color: colors.text }]}
                             placeholder="00000"
-                            placeholderTextColor="#333"
+                            placeholderTextColor={colors.subtext}
                             value={lastMeter}
                             onChangeText={setLastMeter}
                             keyboardType="numeric"
                           />
-                          <Text style={styles.unitText}>km</Text>
+                          <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
                         </View>
                       </View>
-                      <View style={styles.metricInputCol}>
-                        <Text style={styles.metricLabelWide}>Next Service</Text>
+                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Next Service</Text>
                         <View style={styles.meterInputContainer}>
                           <TextInput
-                            style={styles.metricInput}
+                            style={[styles.metricInput, { color: colors.secondary }]}
                             placeholder="00000"
-                            placeholderTextColor="#333"
+                            placeholderTextColor={colors.subtext}
                             value={nextMeter}
                             onChangeText={setNextMeter}
                             keyboardType="numeric"
                           />
-                          <Text style={styles.unitText}>km</Text>
+                          <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
                         </View>
                       </View>
                     </View>
@@ -343,24 +491,24 @@ export default function BillScreen() {
 
                 <View style={styles.divider} />
 
-                <View style={styles.customerInfoContainer}>
+                <View style={[styles.customerInfoContainer, { borderBottomColor: colors.border }]}>
                   <View style={styles.compactInputRow}>
-                    <View style={[styles.infoInputSubRow, { flex: 1.5 }]}>
-                      <Feather name="user" size={13} color="#444" style={styles.infoIcon} />
+                    <View style={[styles.infoInputSubRow, { flex: 1.5, borderBottomColor: colors.border }]}>
+                      <Feather name="user" size={13} color={colors.subtext} style={styles.infoIcon} />
                       <TextInput
-                        style={styles.compactInput}
+                        style={[styles.compactInput, { color: colors.text }]}
                         placeholder="Customer Name"
-                        placeholderTextColor="#333"
+                        placeholderTextColor={colors.subtext}
                         value={customerName}
                         onChangeText={setCustomerName}
                       />
                     </View>
-                    <View style={[styles.infoInputSubRow, { flex: 1 }]}>
-                      <MaterialCommunityIcons name="car-info" size={13} color="#444" style={styles.infoIcon} />
+                    <View style={[styles.infoInputSubRow, { flex: 1, borderBottomColor: colors.border }]}>
+                      <MaterialCommunityIcons name="car-info" size={13} color={colors.subtext} style={styles.infoIcon} />
                       <TextInput
-                        style={styles.compactInput}
+                        style={[styles.compactInput, { color: colors.text }]}
                         placeholder="Vehicle No"
-                        placeholderTextColor="#333"
+                        placeholderTextColor={colors.subtext}
                         value={vehicleNumber}
                         onChangeText={setVehicleNumber}
                         autoCapitalize="characters"
@@ -444,50 +592,50 @@ export default function BillScreen() {
                 )}
               </View>
 
-            <View style={styles.totalSection}>
+            <View style={[styles.totalSection, { borderTopColor: colors.border }]}>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
                 <View style={styles.priceContainer}>
-                  <Text style={styles.currencySymbol}>₹</Text>
-                  <Text style={styles.subtotalPrice}>{grandTotal}</Text>
+                  <Text style={[styles.currencySymbol, { color: colors.secondary }]}>₹</Text>
+                  <Text style={[styles.subtotalPrice, { color: colors.text }]}>{grandTotal}</Text>
                 </View>
               </View>
 
               {advanceAmount > 0 && (
                 <View style={styles.totalRow}>
-                  <Text style={styles.advanceLabel}>Advance</Text>
+                  <Text style={[styles.advanceLabel, { color: colors.primary }]}>Advance</Text>
                   <View style={styles.priceContainer}>
-                    <Text style={[styles.currencySymbol, { color: "#E53935" }]}>-₹</Text>
-                    <Text style={styles.advancePrice}>{advanceAmount}</Text>
+                    <Text style={[styles.currencySymbol, { color: colors.primary }]}>-₹</Text>
+                    <Text style={[styles.advancePrice, { color: colors.primary }]}>{advanceAmount}</Text>
                   </View>
                 </View>
               )}
 
-              <View style={styles.finalBalanceRow}>
-                <Text style={styles.totalLabel}>Final Balance</Text>
+              <View style={[styles.finalBalanceRow, { backgroundColor: isDark ? "rgba(229, 57, 53, 0.1)" : "rgba(229, 57, 53, 0.05)", borderRadius: 8, paddingHorizontal: 12 }]}>
+                <Text style={[styles.totalLabel, { color: colors.primary }]}>Final Balance</Text>
                 <View style={styles.priceContainer}>
-                  <Text style={[styles.currencySymbol, { fontSize: 20, color: "#FFFFFF" }]}>₹</Text>
-                  <Text style={styles.totalPrice}>{finalBalance}</Text>
+                  <Text style={[styles.currencySymbol, { fontSize: 20, color: colors.primary }]}>₹</Text>
+                  <Text style={[styles.totalPrice, { color: colors.primary }]}>{finalBalance}</Text>
                 </View>
               </View>
             </View>
           </View>
         </ViewShot>
 
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{cart.length}</Text>
-            <Text style={styles.summaryKey}>Parts</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>{cart.length}</Text>
+            <Text style={[styles.summaryKey, { color: colors.subtext }]}>Parts</Text>
           </View>
-          <View style={styles.summaryDivider} />
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>₹{grandTotal}</Text>
-            <Text style={styles.summaryKey}>Subtotal</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>₹{grandTotal}</Text>
+            <Text style={[styles.summaryKey, { color: colors.subtext }]}>Subtotal</Text>
           </View>
-          <View style={styles.summaryDivider} />
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>₹{finalBalance}</Text>
-            <Text style={styles.summaryKey}>Balance</Text>
+            <Text style={[styles.summaryValue, { color: colors.text }]}>₹{finalBalance}</Text>
+            <Text style={[styles.summaryKey, { color: colors.subtext }]}>Balance</Text>
           </View>
         </View>
       </ScrollView>
@@ -495,28 +643,44 @@ export default function BillScreen() {
       <View style={styles.footer}>
         <Animated.View style={{ transform: [{ scale: pdfButtonScale }], marginBottom: 10 }}>
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: '#333' }]}
+            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
             onPress={handleNewBill}
             activeOpacity={0.85}
           >
-            <Feather name="file-plus" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>New Bill</Text>
+            <Feather name="file-plus" size={18} color={colors.text} />
+            <Text style={[styles.primaryButtonText, { color: colors.text }]}>New Bill</Text>
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View style={{ transform: [{ scale: waButtonScale }] }}>
+        <Animated.View style={[styles.footerButtonRow, { transform: [{ scale: waButtonScale }] }]}>
           <TouchableOpacity
-            style={[styles.secondaryButton, isGenerating && { opacity: 0.7 }]}
+            style={[styles.pdfButton, isGenerating && { opacity: 0.7 }, { borderColor: isDark ? "rgba(255, 193, 7, 0.4)" : "rgba(255, 152, 0, 0.4)" }]}
+            onPress={handleDownloadPDF}
+            activeOpacity={0.85}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <ActivityIndicator color={colors.secondary} size="small" />
+            ) : (
+              <MaterialCommunityIcons name="file-pdf-box" size={20} color={colors.secondary} />
+            )}
+            <Text style={[styles.pdfButtonText, { color: colors.secondary }]}>
+              PDF
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.secondaryButton, isGenerating && { opacity: 0.7 }, { backgroundColor: colors.primary, flex: 1 }]}
             onPress={handleWhatsApp}
             activeOpacity={0.85}
             disabled={isGenerating}
           >
             {isGenerating ? (
-              <ActivityIndicator color="#25D366" size="small" />
+              <ActivityIndicator color="#FFF" size="small" />
             ) : (
-              <MaterialCommunityIcons name="whatsapp" size={20} color="#25D366" />
+              <MaterialCommunityIcons name="whatsapp" size={20} color="#FFF" />
             )}
-            <Text style={styles.secondaryButtonText}>
+            <Text style={[styles.secondaryButtonText, { color: "#FFF" }]}>
               {isGenerating ? "GENERATING..." : "NEXT →"}
             </Text>
           </TouchableOpacity>
@@ -526,10 +690,10 @@ export default function BillScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F0F0F",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -542,7 +706,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -592,12 +756,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   billCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 16,
-    paddingHorizontal: 24, // Slightly more padding for A4 feel
-    paddingVertical: 28,
-    minHeight: A4_HEIGHT, // A4 height approx
-    justifyContent: "space-between", // Push total to bottom if content is short
+    paddingHorizontal: 16, 
+    paddingVertical: 12,
+    justifyContent: "flex-start", 
   },
   customerInfoContainer: {
     marginBottom: 8,
@@ -607,7 +770,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "transparent",
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: colors.border,
     height: 32,
   },
   compactInputRow: {
@@ -617,7 +780,7 @@ const styles = StyleSheet.create({
   },
   compactInput: {
     flex: 1,
-    color: "#FFFFFF",
+    color: colors.text,
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     padding: 0,
@@ -634,21 +797,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionGap: {
-    height: 8, // More compact gaps
+    height: 4, 
   },
   billRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 7, // Reduced from 10
+    paddingVertical: 5, 
     borderBottomWidth: 1,
-    borderBottomColor: "#252525",
+    borderBottomColor: colors.border,
   },
   swipeContainerRow: {
     backgroundColor: "#E53935",
   },
   swipeInnerRow: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
   },
   deleteActionRow: {
     width: 60,
@@ -670,7 +833,7 @@ const styles = StyleSheet.create({
   billLabelBold: {
     fontFamily: "Inter_700Bold",
     fontSize: 17,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   priceContainer: {
     flexDirection: "row",
@@ -701,8 +864,8 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#333333",
-    marginVertical: 12,
+    backgroundColor: colors.border,
+    marginVertical: 6,
   },
   totalSection: {
     marginTop: 12,
@@ -723,7 +886,7 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontFamily: "Inter_700Bold",
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.text,
     flex: 1,
   },
   subtotalPrice: {
@@ -745,10 +908,10 @@ const styles = StyleSheet.create({
   totalPrice: {
     fontFamily: "Inter_700Bold",
     fontSize: 26,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   summaryRow: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 16,
     flexDirection: "row",
     overflow: "hidden",
@@ -767,7 +930,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontFamily: "Inter_700Bold",
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.text,
   },
   summaryKey: {
     fontFamily: "Inter_400Regular",
@@ -801,7 +964,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   secondaryButton: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 18,
     height: 56,
     flexDirection: "row",
@@ -815,6 +978,26 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
+  },
+  footerButtonRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  pdfButton: {
+    flex: 0.5,
+    backgroundColor: "transparent",
+    borderRadius: 18,
+    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+  },
+  pdfButtonText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
   customAddContainer: {
     marginTop: 16,
@@ -841,7 +1024,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "85%",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 24,
     shadowColor: "#000",
@@ -850,7 +1033,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: colors.border,
   },
   modalHeader: {
     flexDirection: "row",
@@ -897,15 +1080,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalInput: {
-    backgroundColor: "#121212",
+    backgroundColor: colors.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: "#FFFFFF",
+    color: colors.text,
     fontFamily: "Inter_500Medium",
     fontSize: 15,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: colors.border,
   },
   submitCustomButton: {
     backgroundColor: "#E53935",
@@ -920,36 +1103,35 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   shopHeader: {
-    marginBottom: 4,
+    marginBottom: 8,
   },
   shopTitle: {
     fontFamily: "Inter_700Bold",
-    fontSize: 20,
+    fontSize: 24, 
     color: "#E53935",
-    marginBottom: 2,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     textAlign: "center",
     textTransform: "uppercase",
   },
   shopSubtitle: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 9,
-    color: "#666",
+    fontSize: 10,
+    color: colors.subtext,
     textAlign: "center",
     textTransform: "uppercase",
-    letterSpacing: 1.5,
-    marginBottom: 10,
+    letterSpacing: 2,
+    marginBottom: 4,
   },
   shopInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 12,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 0,
   },
   shopDetailsCol: {
-    flex: 1.5,
-    gap: 6,
+    flex: 1.4,
+    gap: 2,
   },
   detailItem: {
     flexDirection: "row",
@@ -958,48 +1140,48 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontFamily: "Inter_500Medium",
-    fontSize: 10,
-    color: "#AAAAAA",
-    lineHeight: 14,
+    fontSize: 8.5,
+    color: colors.subtext,
+    lineHeight: 12,
   },
   metricDetailsCol: {
     flex: 1.2,
-    paddingLeft: 16,
-    gap: 12,
-    borderLeftWidth: 1,
-    borderLeftColor: "#2A1F1F",
-    alignItems: "flex-start", // Changed from flex-end to sit near the divider
+    paddingLeft: 8,
+    gap: 3,
+    borderLeftWidth: 0.6,
+    borderLeftColor: colors.border,
+    alignItems: "center", 
   },
   metricInputCol: {
     flexDirection: "column",
-    alignItems: "flex-start", // Changed from flex-end
+    alignItems: "center", 
     gap: 2,
   },
   metricLabelWide: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 9,
-    color: "#666",
+    fontSize: 7.2,
+    color: colors.subtext,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   metricInput: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    color: "#FFFFFF",
-    textAlign: "left", // Changed from right
+    fontSize: 10,
+    color: colors.text,
+    textAlign: "center", 
     padding: 0,
     minWidth: 40,
   },
   meterInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start", // Changed from flex-end
+    justifyContent: "center", 
   },
   unitText: {
     fontFamily: "Inter_600SemiBold",
-    fontSize: 12,
+    fontSize: 9,
     color: "#888",
-    marginLeft: 4,
+    marginLeft: 3,
   },
   billFooter: {
     marginTop: 8,
