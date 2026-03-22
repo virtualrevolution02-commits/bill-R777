@@ -108,19 +108,19 @@ export default function EarningsScreen() {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.breakdownRow}>
               <View style={styles.breakdownItem}>
-                <Text style={[styles.breakdownLabel, { color: colors.subtext }]}>Labour</Text>
-                <Text style={[styles.breakdownValue, { color: colors.text }]}>₹{stats.totalLabour.toLocaleString()}</Text>
+                <Text style={[styles.breakdownLabel, { color: colors.subtext }]}>Today's Labour</Text>
+                <Text style={[styles.breakdownValue, { color: colors.text }]}>₹{stats.todayLabour.toLocaleString()}</Text>
               </View>
               <View style={[styles.breakdownDivider, { backgroundColor: colors.border }]} />
               <View style={styles.breakdownItem}>
-                <Text style={[styles.breakdownLabel, { color: colors.subtext }]}>Spares</Text>
-                <Text style={[styles.breakdownValue, { color: colors.text }]}>₹{stats.totalSpare.toLocaleString()}</Text>
+                <Text style={[styles.breakdownLabel, { color: colors.subtext }]}>Today's Spares</Text>
+                <Text style={[styles.breakdownValue, { color: colors.text }]}>₹{stats.todaySpare.toLocaleString()}</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.subtext }]}>Today&apos;s Earnings</Text>
+            <Text style={[styles.sectionTitle, { color: colors.subtext }]}>Total Income Breakdown</Text>
           </View>
 
           <View style={styles.cardGroup}>
@@ -129,8 +129,8 @@ export default function EarningsScreen() {
                 <Feather name="tool" size={20} color={colors.primary} />
               </View>
               <View>
-                <Text style={[styles.categoryLabel, { color: colors.subtext }]}>Labour Income</Text>
-                <Text style={[styles.categoryValue, { color: colors.text }]}>₹{stats.todayLabour.toLocaleString()}</Text>
+                <Text style={[styles.categoryLabel, { color: colors.subtext }]}>Total Labour Income</Text>
+                <Text style={[styles.categoryValue, { color: colors.text }]}>₹{stats.totalLabour.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -139,8 +139,8 @@ export default function EarningsScreen() {
                 <Feather name="settings" size={20} color={colors.secondary} />
               </View>
               <View>
-                <Text style={[styles.categoryLabel, { color: colors.subtext }]}>Spares Income</Text>
-                <Text style={[styles.categoryValue, { color: colors.text }]}>₹{stats.todaySpare.toLocaleString()}</Text>
+                <Text style={[styles.categoryLabel, { color: colors.subtext }]}>Total Spares Income</Text>
+                <Text style={[styles.categoryValue, { color: colors.text }]}>₹{stats.totalSpare.toLocaleString()}</Text>
               </View>
             </View>
           </View>

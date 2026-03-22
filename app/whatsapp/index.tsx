@@ -16,10 +16,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/context/ThemeContext";
+import { useGarage } from "@/context/GarageContext";
 import * as Sharing from "expo-sharing";
 
 export default function WhatsAppScreen() {
   const { colors, isDark } = useTheme();
+  const { businessDetails } = useGarage();
   const insets = useSafeAreaInsets();
 
   const params = useLocalSearchParams();
@@ -68,7 +70,7 @@ export default function WhatsAppScreen() {
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
         if (Platform.OS === "ios") {
-          Share.share({ url: shareUri, title: "Ragu Auto Works Bill" });
+          Share.share({ url: shareUri, title: `${businessDetails.shopName || 'Shop'} Bill` });
         } else {
           await Sharing.shareAsync(shareUri, {
             dialogTitle: "Share via WhatsApp",
@@ -91,7 +93,7 @@ export default function WhatsAppScreen() {
     try {
       if (shareUri && await Sharing.isAvailableAsync()) {
         if (Platform.OS === "ios") {
-          Share.share({ url: shareUri, title: "Ragu Auto Works Bill" });
+          Share.share({ url: shareUri, title: `${businessDetails.shopName || 'Shop'} Bill` });
         } else {
           await Sharing.shareAsync(shareUri, {
             dialogTitle: "Share Bill Image",
@@ -128,10 +130,20 @@ export default function WhatsAppScreen() {
 
         <View style={styles.contactInfo}>
           <View style={[styles.avatar, { backgroundColor: isDark ? "#2A3942" : colors.border }]}>
-            <MaterialCommunityIcons name="account" size={22} color={isDark ? "#A0A0A0" : colors.subtext} />
+            {businessDetails.shopLogo ? (
+              <Image 
+                source={{ uri: businessDetails.shopLogo }} 
+                style={{ width: '100%', height: '100%', borderRadius: 19 }} 
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialCommunityIcons name="account" size={22} color={isDark ? "#A0A0A0" : colors.subtext} />
+            )}
           </View>
           <View>
-            <Text style={[styles.contactName, { color: isDark ? "#E9EDEF" : colors.text }]}>Ragu Auto Works</Text>
+            <Text style={[styles.contactName, { color: isDark ? "#E9EDEF" : colors.text }]}>
+              {businessDetails.shopName || "Service Center"}
+            </Text>
             <Text style={styles.contactStatus}>Online</Text>
           </View>
         </View>

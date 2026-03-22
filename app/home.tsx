@@ -6,11 +6,15 @@ import {
   TextInput,
   TouchableOpacity,
   Animated,
-  FlatList,
   Modal,
   Alert,
   ScrollView,
+  Image,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
+import Reanimated, { FadeInDown, Layout, ZoomIn } from "react-native-reanimated";
+import * as ImagePicker from "expo-image-picker";
 import { Swipeable } from "react-native-gesture-handler";
 import { BlurView } from "expo-blur";
 import { router } from "expo-router";
@@ -154,11 +158,15 @@ function PartCard({
   );
 
   return (
-    <View style={styles.swipeContainer}>
+    <Reanimated.View 
+      style={styles.swipeContainer} 
+      entering={FadeInDown.springify().damping(22).mass(0.8)} 
+      layout={Layout.springify().damping(22)}
+    >
       <Swipeable renderRightActions={renderRightActions} containerStyle={styles.swipeableWrapper} overshootRight={false}>
         {cardContent}
       </Swipeable>
-    </View>
+    </Reanimated.View>
   );
 }
 
@@ -178,6 +186,8 @@ export default function HomeScreen() {
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [hiddenParts, setHiddenParts] = useState<string[]>([]);
   const [recentParts, setRecentParts] = useState<SparePart[]>([]);
+  const [isGuideModalVisible, setGuideModalVisible] = useState(false);
+  const [currentGuideStep, setCurrentGuideStep] = useState(0);
 
   const [isLabourModalVisible, setLabourModalVisible] = useState(false);
   const [labourName, setLabourName] = useState("");
@@ -192,6 +202,8 @@ export default function HomeScreen() {
   const [pAddress, setPAddress] = useState(businessDetails.shopAddress);
   const [pPhone, setPPhone] = useState(businessDetails.phoneNumbers);
   const [pInsta, setPInsta] = useState(businessDetails.instagramId);
+  const [pLogo, setPLogo] = useState(businessDetails.shopLogo);
+  const [pDesc, setPDesc] = useState(businessDetails.shopDescription);
 
   // Sync profile state when context changes
   React.useEffect(() => {
@@ -200,7 +212,29 @@ export default function HomeScreen() {
     setPAddress(businessDetails.shopAddress);
     setPPhone(businessDetails.phoneNumbers);
     setPInsta(businessDetails.instagramId);
+    setPLogo(businessDetails.shopLogo);
+    setPDesc(businessDetails.shopDescription);
   }, [businessDetails]);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setPLogo(result.assets[0].uri);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -337,14 +371,32 @@ export default function HomeScreen() {
     >
           <View style={[styles.header, { backgroundColor: colors.background }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {businessDetails.shopName.split(' ')[0].toUpperCase()}
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: colors.text }]} numberOfLines={1}>
-            {businessDetails.shopName.split(' ').slice(1).join(' ').toUpperCase() || "AUTO WORKS"}
-          </Text>
-          <Text style={styles.headerTagline}>Sales & Service</Text>
+          {businessDetails.shopName ? (
+            <>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {businessDetails.shopName.split(' ')[0].toUpperCase()}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.text }]} numberOfLines={1}>
+                {businessDetails.shopName.split(' ').slice(1).join(' ').toUpperCase() || "AUTO WORKS"}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              MOTORCYCLE HUB
+            </Text>
+          )}
+          {businessDetails.shopDescription ? (
+            <Text style={styles.headerTagline}>{businessDetails.shopDescription}</Text>
+          ) : null}
         </View>
+
+        {businessDetails.shopLogo && (
+          <Image 
+            source={{ uri: businessDetails.shopLogo }} 
+            style={styles.headerLogo} 
+            resizeMode="contain" 
+          />
+        )}
 
         <View style={styles.headerRight}>
           <BikeModeSwitch />
@@ -352,53 +404,81 @@ export default function HomeScreen() {
             style={[styles.menuButton, { backgroundColor: colors.card }]}
             onPress={() => setMenuOpen(!isMenuOpen)}
           >
-            <Feather name="more-vertical" size={24} color={colors.text} />
+            <Feather name="settings" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        {isMenuOpen && (
-          <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <TouchableOpacity
-              style={styles.dropdownItem}
-              onPress={() => {
-                setMenuOpen(false);
-                router.push("/history");
-              }}
-            >
-              <Feather name="clock" size={18} color={colors.text} />
-              <Text style={[styles.dropdownText, { color: colors.text }]}>History</Text>
-            </TouchableOpacity>
+        <Modal
+          visible={isMenuOpen}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setMenuOpen(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setMenuOpen(false)}>
+            <View style={{ flex: 1 }}>
+              <TouchableWithoutFeedback>
+                <View 
+                  style={[styles.dropdownMenu, { top: insets.top + 60, right: 20, backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setMenuOpen(false);
+                      router.push("/history");
+                    }}
+                  >
+                    <Feather name="clock" size={18} color={colors.text} />
+                    <Text style={[styles.dropdownText, { color: colors.text }]}>History</Text>
+                  </TouchableOpacity>
 
-            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
+                  <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
 
-            <TouchableOpacity
-              style={styles.dropdownItem}
-              onPress={() => {
-                setMenuOpen(false);
-                router.push("/earnings");
-              }}
-            >
-              <Ionicons name="stats-chart" size={18} color={colors.text} />
-              <Text style={[styles.dropdownText, { color: colors.text }]}>Earnings</Text>
-            </TouchableOpacity>
-            
-            <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setMenuOpen(false);
+                      router.push("/earnings");
+                    }}
+                  >
+                    <Ionicons name="stats-chart" size={18} color={colors.text} />
+                    <Text style={[styles.dropdownText, { color: colors.text }]}>Earnings</Text>
+                  </TouchableOpacity>
+                  <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
 
-            <TouchableOpacity
-              style={styles.dropdownItem}
-              onPress={() => {
-                setMenuOpen(false);
-                setShowProfileDetails(false); // Start with card view
-                setProfileModalVisible(true);
-              }}
-            >
-              <Feather name="user" size={18} color={colors.text} />
-              <Text style={[styles.dropdownText, { color: colors.text }]}>Profile</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setMenuOpen(false);
+                      setGuideModalVisible(true);
+                    }}
+                  >
+                    <Feather name="help-circle" size={18} color={colors.text} />
+                    <Text style={[styles.dropdownText, { color: colors.text }]}>How to Use</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 12, marginVertical: 4 }} />
+
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setMenuOpen(false);
+                      setShowProfileDetails(false); // Start with card view
+                      setProfileModalVisible(true);
+                    }}
+                  >
+                    <Feather name="user" size={18} color={colors.text} />
+                    <Text style={[styles.dropdownText, { color: colors.text }]}>Profile</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </View>
-      <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+      <Reanimated.View 
+        entering={FadeInDown.delay(100).springify().damping(22).mass(0.8)}
+        style={[styles.searchContainer, { backgroundColor: colors.card }]}
+      >
         <Feather name="search" size={20} color={colors.subtext} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
@@ -412,7 +492,7 @@ export default function HomeScreen() {
             <Feather name="x" size={16} color={colors.subtext} />
           </TouchableOpacity>
         )}
-      </View>
+      </Reanimated.View>
 
       <View style={styles.quickAddRow}>
         <TouchableOpacity 
@@ -443,10 +523,13 @@ export default function HomeScreen() {
       </View>
 
       {filtered.length > 0 ? (
-        <FlatList
+        <Reanimated.FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => {
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          itemLayoutAnimation={Layout.springify().damping(22)}
+          renderItem={({ item, index }) => {
             const cartItem = getCartItem(item.id);
             return (
               <PartCard
@@ -492,28 +575,153 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
-
-      <View style={[styles.footer, { backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={[
-            styles.nextButton, 
-            cart.length === 0 && styles.nextButtonDisabled,
-            { backgroundColor: isDark ? colors.card : "#E53935" }
-          ]}
-          onPress={handleNext}
-          activeOpacity={0.85}
+      {(cart.length > 0 || grandTotal > 0) && (
+        <Reanimated.View 
+          entering={FadeInDown.duration(300)}
+          layout={Layout.duration(200)}
+          style={[styles.footer, { backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border }]}
         >
-          {cartCount > 0 && (
-            <View style={[styles.cartBadge, { backgroundColor: isDark ? colors.primary : "#FFFFFF" }]}>
-              <Text style={[styles.cartBadgeText, { color: isDark ? "#FFFFFF" : "#E53935" }]}>{cartCount}</Text>
+          <TouchableOpacity
+            style={[
+              styles.nextButton, 
+              (cart.length === 0 && grandTotal === 0) && styles.nextButtonDisabled,
+              { backgroundColor: isDark ? colors.card : "#E53935" }
+            ]}
+            onPress={handleNext}
+            activeOpacity={0.85}
+          >
+            {cartCount > 0 && (
+              <View style={[styles.cartBadge, { backgroundColor: isDark ? colors.primary : "#FFFFFF" }]}>
+                <Text style={[styles.cartBadgeText, { color: isDark ? "#FFFFFF" : "#E53935" }]}>{cartCount}</Text>
+              </View>
+            )}
+            <Text style={[styles.nextButtonText, { color: "#FFFFFF", marginLeft: cartCount > 0 ? 0 : 0 }]}>NEXT →</Text>
+            {cartCount > 0 && (
+              <Text style={[styles.nextButtonSubtext, { color: isDark ? colors.secondary : "#FFFFFF", marginLeft: 10 }]}>₹{grandTotal}</Text>
+            )}
+          </TouchableOpacity>
+        </Reanimated.View>
+      )}
+
+      <Modal
+        visible={isGuideModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setGuideModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+          <Reanimated.View 
+            entering={ZoomIn.springify().damping(22).mass(0.8).duration(400)}
+            style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: '80%' }]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>How to Use</Text>
+              <TouchableOpacity onPress={() => setGuideModalVisible(false)}>
+                <Feather name="x" size={24} color={colors.subtext} />
+              </TouchableOpacity>
             </View>
-          )}
-          <Text style={[styles.nextButtonText, { color: "#FFFFFF" }]}>NEXT →</Text>
-          {cart.length > 0 && (
-            <Text style={[styles.nextButtonSubtext, { color: isDark ? colors.secondary : "#FFFFFF" }]}>₹{grandTotal}</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+
+            <View style={{ alignItems: 'center', minHeight: 250, justifyContent: 'center', marginBottom: 20 }}>
+              {currentGuideStep === 0 && (
+                <Reanimated.View entering={FadeInDown.springify().damping(22)} style={{ alignItems: 'center', width: '100%' }}>
+                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(229,57,53,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Feather name="plus-circle" size={48} color="#E53935" />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_800ExtraBold", fontSize: 20, color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+                    1. Selecting Items
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: colors.subtext, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10 }}>
+                    Tap the &quot;+&quot; icon next to any spare part to add it to the bill. Use &quot;Item&quot; or &quot;Labour&quot; at the top for custom entries.
+                  </Text>
+                </Reanimated.View>
+              )}
+              {currentGuideStep === 1 && (
+                <Reanimated.View entering={FadeInDown.springify().damping(22)} style={{ alignItems: 'center', width: '100%' }}>
+                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,193,7,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Feather name="arrow-right-circle" size={48} color="#FFC107" />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_800ExtraBold", fontSize: 20, color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+                    2. Pressing Next
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: colors.subtext, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10 }}>
+                    Once items are added to your cart, a &quot;NEXT →&quot; button appears at the bottom. Tap it to proceed to the bill preview.
+                  </Text>
+                </Reanimated.View>
+              )}
+              {currentGuideStep === 2 && (
+                <Reanimated.View entering={FadeInDown.springify().damping(22)} style={{ alignItems: 'center', width: '100%' }}>
+                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(76,175,80,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Feather name="file-text" size={48} color="#4CAF50" />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_800ExtraBold", fontSize: 20, color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+                    3. Reviewing the Bill
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: colors.subtext, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10 }}>
+                    On the Bill screen, you can review the customer details, items, labour charges, and modify discounts before finalizing.
+                  </Text>
+                </Reanimated.View>
+              )}
+              {currentGuideStep === 3 && (
+                <Reanimated.View entering={FadeInDown.springify().damping(22)} style={{ alignItems: 'center', width: '100%' }}>
+                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(33,150,243,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Feather name="share-2" size={48} color="#2196F3" />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_800ExtraBold", fontSize: 20, color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+                    4. Sharing via PDF/WhatsApp
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: colors.subtext, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10 }}>
+                    After tapping &quot;GENERATE BILL&quot;, select &quot;Share &amp; Export&quot; to print, download as PDF, or send directly via WhatsApp.
+                  </Text>
+                </Reanimated.View>
+              )}
+              {currentGuideStep === 4 && (
+                <Reanimated.View entering={FadeInDown.springify().damping(22)} style={{ alignItems: 'center', width: '100%' }}>
+                  <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(156,39,176,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                    <Feather name="trending-up" size={48} color="#9C27B0" />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_800ExtraBold", fontSize: 20, color: colors.text, marginBottom: 12, textAlign: 'center' }}>
+                    5. Tracking History &amp; Earnings
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 15, color: colors.subtext, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10 }}>
+                    Use the settings menu to view past generated bills under &quot;History&quot;, and track your business&apos;s progress under &quot;Earnings&quot;.
+                  </Text>
+                </Reanimated.View>
+              )}
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <TouchableOpacity 
+                disabled={currentGuideStep === 0}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setCurrentGuideStep(Math.max(0, currentGuideStep - 1));
+                }}
+                style={{ padding: 10, opacity: currentGuideStep === 0 ? 0.3 : 1 }}
+              >
+                <Feather name="chevron-left" size={32} color={colors.text} />
+              </TouchableOpacity>
+              
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {[0, 1, 2, 3, 4].map((step) => (
+                  <View key={step} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: currentGuideStep === step ? colors.primary : colors.border }} />
+                ))}
+              </View>
+
+              <TouchableOpacity 
+                disabled={currentGuideStep === 4}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setCurrentGuideStep(Math.min(4, currentGuideStep + 1));
+                }}
+                style={{ padding: 10, opacity: currentGuideStep === 4 ? 0.3 : 1 }}
+              >
+                <Feather name="chevron-right" size={32} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </Reanimated.View>
+        </View>
+      </Modal>
 
       <Modal
         visible={isLabourModalVisible}
@@ -521,47 +729,54 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setLabourModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Add Labour</Text>
-              <TouchableOpacity onPress={() => setLabourModalVisible(false)}>
-                <Feather name="x" size={24} color={colors.subtext} />
-              </TouchableOpacity>
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <Reanimated.View 
+                entering={ZoomIn.springify().damping(22).mass(0.8).duration(400)}
+                style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Add Labour</Text>
+                  <TouchableOpacity onPress={() => setLabourModalVisible(false)}>
+                    <Feather name="x" size={24} color={colors.subtext} />
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Name</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                placeholder="e.g. Engine Service"
-                placeholderTextColor={colors.subtext}
-                value={labourName}
-                onChangeText={setLabourName}
-              />
-            </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. Engine Service"
+                    placeholderTextColor={colors.subtext}
+                    value={labourName}
+                    onChangeText={setLabourName}
+                  />
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Cost (₹)</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                placeholder="0"
-                placeholderTextColor={colors.subtext}
-                value={labourPrice}
-                onChangeText={setLabourPrice}
-                keyboardType="numeric"
-              />
-            </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Labour Cost (₹)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="0"
+                    placeholderTextColor={colors.subtext}
+                    value={labourPrice}
+                    onChangeText={setLabourPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
 
-            <TouchableOpacity 
-              style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
-              onPress={submitLabourItem}
-            >
-              <Text style={styles.submitCustomButtonText}>Add Labour</Text>
-            </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
+                  onPress={submitLabourItem}
+                >
+                  <Text style={styles.submitCustomButtonText}>Add Labour</Text>
+                </TouchableOpacity>
+              </Reanimated.View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -570,129 +785,199 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setProfileModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          {!showProfileDetails ? (
-            <TouchableOpacity 
-              activeOpacity={0.9}
-              onPress={() => setShowProfileDetails(true)}
-              style={[styles.profileCardFull, { backgroundColor: colors.card, borderColor: colors.border }]}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+            {!showProfileDetails ? (
+            <Reanimated.View
+              entering={ZoomIn.springify().damping(22).mass(0.8).duration(400)}
+              style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
             >
-              <View style={styles.profileCardHeader}>
-                <View style={[styles.profileIconContainer, { backgroundColor: colors.primary }]}>
-                  <Feather name="shield" size={32} color="#FFFFFF" />
+              <TouchableOpacity 
+                activeOpacity={0.9}
+                onPress={() => setShowProfileDetails(true)}
+                style={[styles.profileCardFull, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={{ width: '100%', alignItems: 'center', paddingHorizontal: 20, paddingTop: 15, paddingBottom: 10 }}>
+                  <TouchableOpacity 
+                    style={[styles.profileCloseTop, { position: 'absolute', right: 20, top: 15, zIndex: 10 }]}
+                    onPress={() => setProfileModalVisible(false)}
+                  >
+                    <Feather name="x" size={24} color={colors.subtext} />
+                  </TouchableOpacity>
+
+                  {businessDetails.shopLogo ? (
+                    <Image source={{ uri: businessDetails.shopLogo }} style={[styles.profileLogoLarge, { position: 'absolute', left: 20, top: 15, width: 32, height: 32, marginBottom: 0 }]} />
+                  ) : (
+                    <View style={[styles.profileIconContainer, { position: 'absolute', left: 20, top: 15, backgroundColor: colors.primary, width: 32, height: 32, borderRadius: 16 }]}>
+                      <Feather name="shield" size={16} color="#FFFFFF" />
+                    </View>
+                  )}
+
+                  <View style={{ width: '100%', alignItems: 'center', paddingHorizontal: 70, minHeight: 60, justifyContent: 'center' }}>
+                                 <Text style={[styles.profileShopTitle, { color: colors.text, textAlign: 'center', fontSize: 34, lineHeight: 38 }]} numberOfLines={1} adjustsFontSizeToFit>{businessDetails.shopName || "MOTORCYCLE HUB"}</Text>
+                    {businessDetails.shopDescription ? (
+                      <Text style={[styles.profileShopDesc, { color: colors.subtext, textAlign: 'center', width: '100%', marginTop: 0 }]} numberOfLines={1} adjustsFontSizeToFit>{businessDetails.shopDescription}</Text>
+                    ) : null}
+                    {(businessDetails.ownerName || businessDetails.instagramId) ? (
+                      <Text style={[styles.profileShopOwner, { color: colors.text, marginTop: 2, fontSize: 13, opacity: 0.85 }]} numberOfLines={1} adjustsFontSizeToFit>
+                        {businessDetails.ownerName}{businessDetails.ownerName && businessDetails.instagramId ? ' • ' : ''}{businessDetails.instagramId}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-                <TouchableOpacity 
-                  style={styles.profileCloseTop}
-                  onPress={() => setProfileModalVisible(false)}
-                >
-                  <Feather name="x" size={24} color={colors.subtext} />
-                </TouchableOpacity>
-              </View>
-              
-              <Text style={[styles.profileShopTitle, { color: colors.text }]}>{businessDetails.shopName}</Text>
-              <Text style={[styles.profileShopOwner, { color: colors.subtext }]}>Owner: {businessDetails.ownerName}</Text>
-              
-              <View style={styles.profileCardDivider} />
-              
-              <View style={styles.tapToEdit}>
-                <Feather name="edit-3" size={14} color={colors.primary} />
-                <Text style={[styles.tapToEditText, { color: colors.primary }]}>TAP TO EDIT DETAILS</Text>
-              </View>
-            </TouchableOpacity>
+                
+                {(businessDetails.shopName || businessDetails.ownerName) && <View style={styles.profileCardDivider} />}
+                
+                <View style={styles.tapToEdit}>
+                  <Feather name="edit-3" size={14} color={colors.primary} />
+                  <Text style={[styles.tapToEditText, { color: colors.primary }]}>TAP TO EDIT DETAILS</Text>
+                </View>
+              </TouchableOpacity>
+            </Reanimated.View>
           ) : (
-            <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: '80%' }]}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setShowProfileDetails(false)}>
-                  <Feather name="arrow-left" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginLeft: 12 }]}>Edit Profile</Text>
-                <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
-                  <Feather name="x" size={24} color={colors.subtext} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Name</Text>
-                  <TextInput
-                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. My Workshop"
-                    placeholderTextColor={colors.subtext}
-                    value={pShop}
-                    onChangeText={setPShop}
-                  />
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <Reanimated.View 
+                entering={ZoomIn.springify().damping(22).mass(0.8).duration(400)}
+                style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border, maxHeight: '80%' }]}
+              >
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={() => setShowProfileDetails(false)}>
+                    <Feather name="arrow-left" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                  <Text style={[styles.modalTitle, { color: colors.text, flex: 1, marginLeft: 12 }]}>Edit Profile</Text>
+                  <TouchableOpacity onPress={() => setProfileModalVisible(false)}>
+                    <Feather name="x" size={24} color={colors.subtext} />
+                  </TouchableOpacity>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Owner Name</Text>
-                  <TextInput
-                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. Ragu"
-                    placeholderTextColor={colors.subtext}
-                    value={pOwner}
-                    onChangeText={setPOwner}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Address</Text>
-                  <TextInput
-                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border, height: 60 }]}
-                    placeholder="Full address"
-                    placeholderTextColor={colors.subtext}
-                    value={pAddress}
-                    onChangeText={setPAddress}
-                    multiline
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Phone Number(s)</Text>
-                  <TextInput
-                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. 9876543210"
-                    placeholderTextColor={colors.subtext}
-                    value={pPhone}
-                    onChangeText={setPPhone}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Instagram Handle</Text>
-                  <TextInput
-                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                    placeholder="@your_handle"
-                    placeholderTextColor={colors.subtext}
-                    value={pInsta}
-                    onChangeText={setPInsta}
-                  />
-                </View>
-
-                <TouchableOpacity 
-                  style={[styles.submitCustomButton, { backgroundColor: colors.primary, marginTop: 10 }]}
-                  onPress={async () => {
-                     try {
-                       await updateBusinessDetails({
-                         ownerName: pOwner,
-                         shopName: pShop,
-                         shopAddress: pAddress,
-                         phoneNumbers: pPhone,
-                         instagramId: pInsta
-                       });
-                       setProfileModalVisible(false);
-                       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                   } catch {
-                     Alert.alert("Error", "Failed to save profile.");
-                   }
-                  }}
+                <ScrollView 
+                  showsVerticalScrollIndicator={false} 
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
                 >
-                  <Text style={styles.submitCustomButtonText}>Save Changes</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
+                  <View style={styles.logoPickerContainer}>
+                    <TouchableOpacity 
+                      onPress={pickImage}
+                      style={[styles.logoPicker, { backgroundColor: colors.background, borderColor: colors.border }]}
+                    >
+                      {pLogo ? (
+                        <Image source={{ uri: pLogo }} style={styles.logoPreview} />
+                      ) : (
+                        <View style={styles.logoPlaceholder}>
+                          <Feather name="camera" size={24} color={colors.subtext} />
+                          <Text style={[styles.logoPlaceholderText, { color: colors.subtext }]}>Add Logo</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    {pLogo && (
+                      <TouchableOpacity 
+                        style={styles.removeLogoButton}
+                        onPress={() => {
+                          setPLogo(undefined);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        }}
+                      >
+                        <Text style={styles.removeLogoText}>Remove Logo</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Name</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. My Workshop"
+                      placeholderTextColor={colors.subtext}
+                      value={pShop}
+                      onChangeText={setPShop}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Service Description</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="Shop Description (optional)"
+                      placeholderTextColor={colors.subtext}
+                      value={pDesc}
+                      onChangeText={setPDesc}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Owner Name</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. Ragu"
+                      placeholderTextColor={colors.subtext}
+                      value={pOwner}
+                      onChangeText={setPOwner}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Shop Address</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border, height: 60 }]}
+                      placeholder="Full address"
+                      placeholderTextColor={colors.subtext}
+                      value={pAddress}
+                      onChangeText={setPAddress}
+                      multiline
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Phone Number(s)</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="e.g. 9876543210"
+                      placeholderTextColor={colors.subtext}
+                      value={pPhone}
+                      onChangeText={setPPhone}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.inputLabel, { color: colors.subtext }]}>Instagram Handle</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                      placeholder="@your_handle"
+                      placeholderTextColor={colors.subtext}
+                      value={pInsta}
+                      onChangeText={setPInsta}
+                    />
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.submitCustomButton, { backgroundColor: colors.primary, marginTop: 10 }]}
+                    onPress={async () => {
+                       try {
+                         await updateBusinessDetails({
+                           ownerName: pOwner,
+                           shopName: pShop,
+                           shopAddress: pAddress,
+                           phoneNumbers: pPhone,
+                           instagramId: pInsta,
+                           shopLogo: pLogo,
+                           shopDescription: pDesc
+                         });
+                         setProfileModalVisible(false);
+                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                     } catch {
+                       Alert.alert("Error", "Failed to save profile.");
+                     }
+                    }}
+                  >
+                    <Text style={styles.submitCustomButtonText}>Save Changes</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </Reanimated.View>
+            </TouchableWithoutFeedback>
           )}
-        </View>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -701,47 +986,54 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
-          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Add Item</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Feather name="x" size={24} color={colors.subtext} />
-              </TouchableOpacity>
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <BlurView intensity={isDark ? 40 : 80} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <Reanimated.View 
+                entering={ZoomIn.springify().damping(22).mass(0.8).duration(400)}
+                style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>Add Item</Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Feather name="x" size={24} color={colors.subtext} />
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Item Name</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                placeholder="Enter item name"
-                placeholderTextColor={colors.subtext}
-                value={customName}
-                onChangeText={setCustomName}
-              />
-            </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Item Name</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="Enter item name"
+                    placeholderTextColor={colors.subtext}
+                    value={customName}
+                    onChangeText={setCustomName}
+                  />
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.subtext }]}>Price (₹)</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
-                placeholder="0"
-                placeholderTextColor={colors.subtext}
-                value={customPrice}
-                onChangeText={setCustomPrice}
-                keyboardType="numeric"
-              />
-            </View>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: colors.subtext }]}>Price (₹)</Text>
+                  <TextInput
+                    style={[styles.modalInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                    placeholder="0"
+                    placeholderTextColor={colors.subtext}
+                    value={customPrice}
+                    onChangeText={setCustomPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
 
-            <TouchableOpacity 
-              style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
-              onPress={submitCustomItem}
-            >
-              <Text style={styles.submitCustomButtonText}>Add to Bill</Text>
-            </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.submitCustomButton, { backgroundColor: colors.primary }]}
+                  onPress={submitCustomItem}
+                >
+                  <Text style={styles.submitCustomButtonText}>Add to Bill</Text>
+                </TouchableOpacity>
+              </Reanimated.View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
@@ -778,6 +1070,12 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     letterSpacing: 1,
     textTransform: "uppercase",
     marginTop: 2,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    marginLeft: 12,
   },
   menuButton: {
     width: 40,
@@ -1202,8 +1500,13 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontFamily: "Inter_800ExtraBold",
     fontSize: 24,
     textAlign: "center",
-    marginBottom: 8,
     letterSpacing: -0.5,
+  },
+  profileShopDesc: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 2,
   },
   profileShopOwner: {
     fontFamily: "Inter_600SemiBold",
@@ -1227,5 +1530,48 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontFamily: "Inter_700Bold",
     fontSize: 12,
     letterSpacing: 1,
+  },
+  profileLogoLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 0,
+  },
+  logoPickerContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 10,
+  },
+  logoPicker: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  logoPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  logoPlaceholderText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+  },
+  removeLogoButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  removeLogoText: {
+    color: '#E53935',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 13,
   },
 });

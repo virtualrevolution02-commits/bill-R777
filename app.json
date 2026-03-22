@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Ragu Auto Works",
+    "name": "Vistara Tech Bills",
     "slug": "r777-garage",
     "version": "1.6",
     "orientation": "portrait",
@@ -16,7 +16,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raguautoworks",
-      "buildNumber": "1.6.0"
+      "buildNumber": "1.6.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.raguautoworks",
@@ -40,7 +43,8 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

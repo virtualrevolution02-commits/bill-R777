@@ -25,6 +25,8 @@ export type BusinessDetails = {
   shopAddress: string;
   phoneNumbers: string;
   instagramId: string;
+  shopLogo?: string;
+  shopDescription?: string;
 };
 
 type GarageContextType = {

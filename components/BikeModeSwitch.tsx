@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
 import { TouchableOpacity, StyleSheet, View } from "react-native";
 import Svg, { Path, Circle, Defs, RadialGradient, Stop, G } from "react-native-svg";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedProps, 
-  withTiming, 
+import Animated, {
+  useSharedValue,
+  useAnimatedProps,
+  withTiming,
 } from "react-native-reanimated";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -34,9 +34,9 @@ export const BikeModeSwitch = () => {
   });
 
   return (
-    <TouchableOpacity 
-      activeOpacity={0.8} 
-      onPress={toggleTheme} 
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={toggleTheme}
       style={styles.container}
     >
       <Svg width="50" height="40" viewBox="0 0 50 40">
@@ -79,15 +79,15 @@ export const BikeModeSwitch = () => {
 
           {/* Bike Body/Forks */}
           <Path
-             d="M20 15 L22 30 M30 15 L28 30"
-             stroke={colors.text}
-             strokeWidth="2.5"
-             strokeLinecap="round"
+            d="M20 15 L22 30 M30 15 L28 30"
+            stroke={colors.text}
+            strokeWidth="2.5"
+            strokeLinecap="round"
           />
 
           {/* Main Headlight Housing */}
           <Circle cx="25" cy="18" r="8" fill={colors.card} stroke={colors.text} strokeWidth="2" />
-          
+
           {/* Internal Headlight Lens */}
           <AnimatedCircle
             cx="25"
@@ -95,7 +95,7 @@ export const BikeModeSwitch = () => {
             r="6"
             animatedProps={animatedHeadlightProps}
           />
-          
+
           {/* Front Fender/Tire partial */}
           <Path
             d="M20 35 Q25 32 30 35"

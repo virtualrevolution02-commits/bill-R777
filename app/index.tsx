@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import BikeRepairAnimation from "@/components/BikeRepairAnimation";
 import { useTheme } from "@/context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
@@ -55,12 +54,14 @@ export default function SplashScreen() {
       }),
       Animated.timing(progressWidth, {
         toValue: width - 64,
-        duration: 5000,
+        duration: 2500,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: false,
       }),
-    ]).start();
-  }, []);
+    ]).start(() => {
+      handleAnimationComplete();
+    });
+  }, [lineScale, logoOpacity, logoScale, progressWidth, subtitleOpacity]);
 
   const handleAnimationComplete = () => {
     router.replace("/home");
@@ -84,24 +85,10 @@ export default function SplashScreen() {
             { opacity: logoOpacity, transform: [{ scale: logoScale }] },
           ]}
         >
-          <Text style={styles.logo}>Ragu</Text>
-          <Text style={[styles.logoSub, { color: colors.text }]}>AUTO WORKS</Text>
-          <Animated.View
-            style={[
-              styles.logoDivider,
-              { transform: [{ scaleX: subtitleOpacity }] },
-            ]}
-          />
-          <Animated.Text
-            style={[styles.tagline, { opacity: subtitleOpacity, color: colors.subtext }]}
-          >
-            Sales & Service
-          </Animated.Text>
+          <Text style={[styles.logoSub, { color: colors.subtext, fontSize: 16, letterSpacing: 4, marginBottom: 8 }]}>BUILT BY</Text>
+          <Text style={[styles.logo, { fontSize: 42, lineHeight: 48, textAlign: 'center' }]}>VISTARA</Text>
+          <Text style={[styles.logo, { fontSize: 42, lineHeight: 48, textAlign: 'center' }]}>TECH</Text>
         </Animated.View>
-      </View>
-
-      <View style={styles.bikeContainer}>
-        <BikeRepairAnimation onComplete={handleAnimationComplete} />
       </View>
 
       <View style={styles.progressContainer}>
@@ -126,7 +113,6 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 60,
   },
   logoContainer: {
     alignItems: "center",

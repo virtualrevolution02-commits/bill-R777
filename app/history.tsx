@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, Platform, Alert, Animated } from "react-native";
+import Reanimated, { FadeInDown, Layout } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -10,6 +11,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useTheme } from "@/context/ThemeContext";
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 
 export default function HistoryScreen() {
   const { colors, isDark } = useTheme();
@@ -106,6 +108,17 @@ export default function HistoryScreen() {
       const parsed = JSON.parse(stored);
       parsed.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+      let logoBase64 = '';
+      if (businessDetails.shopLogo) {
+        try {
+          logoBase64 = await FileSystem.readAsStringAsync(businessDetails.shopLogo, {
+            encoding: 'base64',
+          });
+        } catch (e) {
+          console.warn("Failed to read logo for History PDF:", e);
+        }
+      }
+
       const html = `
         <html>
           <head>
@@ -134,20 +147,21 @@ export default function HistoryScreen() {
             </style>
           </head>
           <body>
-            <div class="header-section">
-              <div class="shop-info">
-                <h1>${businessDetails.shopName.toUpperCase()}</h1>
-                <p style="font-size: 14px; margin-top: 5px; font-weight: 800; color: #000;">
-                  ${businessDetails.ownerName} &bull; ${businessDetails.instagramId}
-                </p>
-                <div style="font-size: 12px; color: #333; margin-top: 5px; font-weight: 700;">
-                  Cell: ${businessDetails.phoneNumbers}
-                </div>
-                <div style="font-size: 11px; color: #444; margin-top: 3px; font-weight: 500;">${businessDetails.shopAddress}</div>
+            <div class="header-section" style="border-bottom: 3px solid #E53935; padding-bottom: 12px; margin-bottom: 20px; position: relative; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px;">
+              ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" style="width: 32px; height: 32px; border-radius: 4px; position: absolute; left: 0; top: 0;" />` : ''}
+              <div style="width: 100%; box-sizing: border-box; padding: 0 60px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <h1 style="margin: 0; color: #E53935; font-size: 34px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; text-align: center; width: 100%; white-space: nowrap; line-height: 1.1;">${(businessDetails.shopName || 'MOTORCYCLE HUB').toUpperCase()}</h1>
+                ${businessDetails.shopDescription ? `<p style="margin: 2px 0 0 0; font-size: 13px; color: #444; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; white-space: nowrap;">${(businessDetails.shopDescription).toUpperCase()}</p>` : ''}
+                ${(businessDetails.ownerName || businessDetails.instagramId) ? `
+                  <div style="margin-top: 4px; font-size: 12px; color: #000; font-weight: 700; text-align: center; width: 100%;">
+                    ${businessDetails.ownerName}${ (businessDetails.ownerName && businessDetails.instagramId) ? ' &bull; ' : '' }${businessDetails.instagramId}
+                  </div>
+                ` : ''}
               </div>
-              <div class="report-info" style="color: #000; font-weight: 700;">
-                Generated: ${new Date().toLocaleDateString('en-IN')}
-              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 11px; color: #666; font-weight: 600;">
+              ${businessDetails.shopAddress ? `<div>${businessDetails.shopAddress}</div>` : '<div></div>'}
+              <div>REPORT DATE: ${new Date().toLocaleDateString('en-IN').toUpperCase()}</div>
             </div>
 
             <table>
@@ -211,7 +225,7 @@ export default function HistoryScreen() {
             </div>
             
             <div style="margin-top: 60px; text-align: center; color: #aaa; font-size: 10px;">
-              Generated via ${businessDetails.shopName.toUpperCase()} Dashboard &bull; All rights reserved
+              Generated via ${(businessDetails.shopName || 'MOTORCYCLE HUB').toUpperCase()} Dashboard & bull; All rights reserved
             </div>
           </body>
         </html>
@@ -283,7 +297,11 @@ export default function HistoryScreen() {
           };
 
           return (
-            <View style={[styles.swipeContainer, { backgroundColor: colors.primary }]}>
+            <Reanimated.View 
+              entering={FadeInDown.springify().damping(22).mass(0.8)}
+              layout={Layout.springify().damping(22)}
+              style={[styles.swipeContainer, { backgroundColor: colors.primary }]}
+            >
               <Swipeable renderRightActions={renderRightActions} containerStyle={styles.swipeableWrapper} overshootRight={false}>
                 <View style={[styles.billCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <TouchableOpacity 
@@ -318,7 +336,7 @@ export default function HistoryScreen() {
                   </View>
                 </View>
               </Swipeable>
-            </View>
+            </Reanimated.View>
           );
         }}
         renderSectionHeader={({ section }) => {

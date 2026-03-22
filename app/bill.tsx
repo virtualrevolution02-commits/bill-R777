@@ -10,7 +10,10 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Image,
 } from "react-native";
+import Reanimated, { FadeInDown } from "react-native-reanimated";
+import * as FileSystem from "expo-file-system";
 import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -186,6 +189,17 @@ export default function BillScreen() {
     setIsGenerating(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    let logoBase64 = '';
+    if (businessDetails.shopLogo) {
+      try {
+        logoBase64 = await FileSystem.readAsStringAsync(businessDetails.shopLogo, {
+          encoding: 'base64',
+        });
+      } catch (e) {
+        console.warn("Failed to read logo for PDF:", e);
+      }
+    }
+
     try {
       // 1. Save bill
       await finalizeBill();
@@ -227,14 +241,21 @@ export default function BillScreen() {
             </style>
           </head>
           <body>
-            <div class="header">
-              <h1>${businessDetails.shopName.toUpperCase()}</h1>
-              <p>SALES & SERVICE</p>
-              <div style="margin-top: 10px; font-size: 13px; color: #000; font-weight: 800;">
-                ${businessDetails.ownerName} &bull; ${businessDetails.instagramId}
+            <div class="header-section" style="border-bottom: 3px solid #E53935; padding-bottom: 12px; margin-bottom: 15px; position: relative; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 4px;">
+              ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" style="width: 32px; height: 32px; border-radius: 4px; position: absolute; left: 0; top: 0;" />` : ''}
+              <div style="width: 100%; box-sizing: border-box; padding: 0 60px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <h1 style="margin: 0; color: #E53935; font-size: 34px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; text-align: center; width: 100%; white-space: nowrap; line-height: 1.1;">${(businessDetails.shopName || 'MOTORCYCLE HUB').toUpperCase()}</h1>
+                ${businessDetails.shopDescription ? `<p style="margin: 2px 0 0 0; font-size: 13px; color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; white-space: nowrap;">${businessDetails.shopDescription}</p>` : ''}
+                ${(businessDetails.ownerName || businessDetails.instagramId) ? `
+                  <div style="margin-top: 4px; font-size: 12px; color: #000; font-weight: 800; text-align: center; width: 100%;">
+                    ${businessDetails.ownerName}${ (businessDetails.ownerName && businessDetails.instagramId) ? ' &bull; ' : '' }${businessDetails.instagramId}
+                  </div>
+                ` : ''}
               </div>
-              <p style="font-size: 12px; margin-top: 5px; color: #333; font-weight: 600;">Cell: ${businessDetails.phoneNumbers}</p>
-              <p style="font-size: 11px; color: #333; font-weight: 500; margin-top: 2px;">${businessDetails.shopAddress}</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 11px; color: #555; font-weight: 600;">
+              ${businessDetails.shopAddress ? `<div>${businessDetails.shopAddress}</div>` : '<div></div>'}
+              ${businessDetails.phoneNumbers ? `<div>Cell: ${businessDetails.phoneNumbers}</div>` : '<div></div>'}
             </div>
 
             <div class="bill-info">
@@ -320,7 +341,7 @@ export default function BillScreen() {
             </div>
 
             <p style="margin-top: 60px; text-align: center; color: #aaa; font-size: 11px;">
-              Thank you for choosing ${businessDetails.shopName.toUpperCase()}! Ride safe and visit us again.
+              Thank you for choosing ${(businessDetails.shopName || 'MOTORCYCLE HUB').toUpperCase()}! Ride safe and visit us again.
             </p>
           </body>
         </html>
@@ -403,7 +424,18 @@ export default function BillScreen() {
         <TouchableOpacity
           style={[styles.exitButton, { backgroundColor: isDark ? "#2A1F1F" : "#FFE0E0" }]}
           onPress={() => {
-            // ... (alert)
+            Alert.alert(
+              "Exit Bill",
+              "Are you sure you want to return to Home?",
+              [
+                { text: "Stay", style: "cancel" },
+                { 
+                  text: "Exit", 
+                  style: "destructive", 
+                  onPress: () => router.replace("/home") 
+                }
+              ]
+            );
           }}
         >
           <Feather name="home" size={22} color={colors.primary} />
@@ -414,76 +446,107 @@ export default function BillScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <ViewShot
           ref={viewShotRef}
           options={{ format: "jpg", quality: 0.9, result: "tmpfile" }}
           style={{ backgroundColor: colors.background }}
         >
-            <View style={[styles.billCard, { backgroundColor: colors.card }]}>
-              <View>
-                <View style={[styles.shopHeader, { borderBottomColor: colors.border }]}>
-                  <Text style={styles.shopTitle}>{businessDetails.shopName.toUpperCase()}</Text>
-                  <Text style={[styles.shopSubtitle, { color: colors.subtext }]}>Sales & Service</Text>
+          <Reanimated.View 
+            entering={FadeInDown.springify().damping(22).mass(0.8)}
+            style={[styles.billCard, { backgroundColor: colors.card }]}
+          >
+                <View style={[styles.shopHeader, { borderBottomColor: colors.border, paddingBottom: 10, paddingTop: 5 }]}>
+                  <View style={{ width: '100%', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 50 }}>
+                    {businessDetails.shopLogo && (
+                      <Image 
+                        source={{ uri: businessDetails.shopLogo }} 
+                        style={[styles.billLogo, { position: 'absolute', left: 0, top: 0, width: 32, height: 32, marginTop: 0, marginRight: 0 }]} 
+                        resizeMode="contain" 
+                      />
+                    )}
+                    <View style={{ alignItems: 'center', paddingHorizontal: 60 }}>
+                       <Text 
+                        style={[styles.shopTitle, { textAlign: 'center', fontSize: 32, lineHeight: 36 }]} 
+                        numberOfLines={1} 
+                        adjustsFontSizeToFit
+                      >
+                        {(businessDetails.shopName || 'MOTORCYCLE HUB').toUpperCase()}
+                      </Text>
+                      {businessDetails.shopDescription ? (
+                        <Text style={[styles.shopSubtitle, { color: colors.subtext, textAlign: 'center', width: '100%', marginTop: 0 }]} numberOfLines={1} adjustsFontSizeToFit>{businessDetails.shopDescription}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                </View>
                   
-                  <View style={styles.shopInfoRow}>
-                    <View style={styles.shopDetailsCol}>
+                <View style={styles.shopInfoRow}>
+                  <View style={styles.shopDetailsCol}>
+                    {businessDetails.ownerName ? (
                       <View style={styles.detailItem}>
                         <Feather name="user" size={11} color="#E53935" style={{ marginTop: 2 }} />
                         <Text style={styles.detailText}>{businessDetails.ownerName}</Text>
                       </View>
+                    ) : null}
+                    {businessDetails.instagramId ? (
                       <View style={styles.detailItem}>
                         <Feather name="instagram" size={11} color="#E53935" style={{ marginTop: 2 }} />
                         <Text style={styles.detailText}>{businessDetails.instagramId}</Text>
                       </View>
+                    ) : null}
+                    {businessDetails.phoneNumbers ? (
                       <View style={styles.detailItem}>
                         <Feather name="phone" size={11} color="#E53935" style={{ marginTop: 2 }} />
                         <Text style={styles.detailText}>{businessDetails.phoneNumbers}</Text>
                       </View>
+                    ) : null}
+                    {businessDetails.shopAddress ? (
                       <View style={styles.detailItem}>
                         <Feather name="map-pin" size={11} color={colors.primary} style={{ marginTop: 2 }} />
                         <Text style={[styles.detailText, { flex: 1, color: colors.subtext }]}>
                           {businessDetails.shopAddress}
                         </Text>
                       </View>
-                    </View>
+                    ) : null}
+                  </View>
 
-                    <View style={styles.metricDetailsCol}>
-                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Bill No</Text>
-                        <Text style={[styles.metricInput, { color: colors.secondary, textAlign: "center" }]}>
-                          {currentBillId 
-                            ? currentBillId.padStart(3, '0') 
-                            : nextBillNumber.toString().padStart(3, '0')}
-                        </Text>
+                  <View style={styles.metricDetailsCol}>
+                    <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Bill No</Text>
+                      <Text style={[styles.metricInput, { color: colors.secondary, textAlign: "center" }]}>
+                        {currentBillId 
+                          ? currentBillId.padStart(3, '0') 
+                          : nextBillNumber.toString().padStart(3, '0')}
+                      </Text>
+                    </View>
+                    <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Last Service</Text>
+                      <View style={styles.meterInputContainer}>
+                        <TextInput
+                          style={[styles.metricInput, { color: colors.text }]}
+                          placeholder="00000"
+                          placeholderTextColor={colors.subtext}
+                          value={lastMeter}
+                          onChangeText={setLastMeter}
+                          keyboardType="numeric"
+                        />
+                        <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
                       </View>
-                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Last Service</Text>
-                        <View style={styles.meterInputContainer}>
-                          <TextInput
-                            style={[styles.metricInput, { color: colors.text }]}
-                            placeholder="00000"
-                            placeholderTextColor={colors.subtext}
-                            value={lastMeter}
-                            onChangeText={setLastMeter}
-                            keyboardType="numeric"
-                          />
-                          <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
-                        </View>
-                      </View>
-                      <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Next Service</Text>
-                        <View style={styles.meterInputContainer}>
-                          <TextInput
-                            style={[styles.metricInput, { color: colors.secondary }]}
-                            placeholder="00000"
-                            placeholderTextColor={colors.subtext}
-                            value={nextMeter}
-                            onChangeText={setNextMeter}
-                            keyboardType="numeric"
-                          />
-                          <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
-                        </View>
+                    </View>
+                    <View style={[styles.metricInputCol, { borderBottomColor: colors.border }]}>
+                      <Text style={[styles.metricLabelWide, { color: colors.subtext }]}>Next Service</Text>
+                      <View style={styles.meterInputContainer}>
+                        <TextInput
+                          style={[styles.metricInput, { color: colors.secondary }]}
+                          placeholder="00000"
+                          placeholderTextColor={colors.subtext}
+                          value={nextMeter}
+                          onChangeText={setNextMeter}
+                          keyboardType="numeric"
+                        />
+                        <Text style={[styles.unitText, { color: colors.subtext }]}>km</Text>
                       </View>
                     </View>
                   </View>
@@ -590,36 +653,35 @@ export default function BillScreen() {
                     ))}
                   </>
                 )}
-              </View>
 
-            <View style={[styles.totalSection, { borderTopColor: colors.border }]}>
-              <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.currencySymbol, { color: colors.secondary }]}>₹</Text>
-                  <Text style={[styles.subtotalPrice, { color: colors.text }]}>{grandTotal}</Text>
-                </View>
-              </View>
-
-              {advanceAmount > 0 && (
+              <View style={[styles.totalSection, { borderTopColor: colors.border }]}>
                 <View style={styles.totalRow}>
-                  <Text style={[styles.advanceLabel, { color: colors.primary }]}>Advance</Text>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>Total</Text>
                   <View style={styles.priceContainer}>
-                    <Text style={[styles.currencySymbol, { color: colors.primary }]}>-₹</Text>
-                    <Text style={[styles.advancePrice, { color: colors.primary }]}>{advanceAmount}</Text>
+                    <Text style={[styles.currencySymbol, { color: colors.secondary }]}>₹</Text>
+                    <Text style={[styles.subtotalPrice, { color: colors.text }]}>{grandTotal}</Text>
                   </View>
                 </View>
-              )}
 
-              <View style={[styles.finalBalanceRow, { backgroundColor: isDark ? "rgba(229, 57, 53, 0.1)" : "rgba(229, 57, 53, 0.05)", borderRadius: 8, paddingHorizontal: 12 }]}>
-                <Text style={[styles.totalLabel, { color: colors.primary }]}>Final Balance</Text>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.currencySymbol, { fontSize: 20, color: colors.primary }]}>₹</Text>
-                  <Text style={[styles.totalPrice, { color: colors.primary }]}>{finalBalance}</Text>
+                {advanceAmount > 0 && (
+                  <View style={styles.totalRow}>
+                    <Text style={[styles.advanceLabel, { color: colors.primary }]}>Advance</Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={[styles.currencySymbol, { color: colors.primary }]}>-₹</Text>
+                      <Text style={[styles.advancePrice, { color: colors.primary }]}>{advanceAmount}</Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={[styles.finalBalanceRow, { backgroundColor: isDark ? "rgba(229, 57, 53, 0.1)" : "rgba(229, 57, 53, 0.05)", borderRadius: 8, paddingHorizontal: 12 }]}>
+                  <Text style={[styles.totalLabel, { color: colors.primary }]}>Final Balance</Text>
+                  <View style={styles.priceContainer}>
+                    <Text style={[styles.currencySymbol, { fontSize: 20, color: colors.primary }]}>₹</Text>
+                    <Text style={[styles.totalPrice, { color: colors.primary }]}>{finalBalance}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
+            </Reanimated.View>
         </ViewShot>
 
         <View style={[styles.summaryRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -736,6 +798,12 @@ const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     fontSize: 16,
     color: "#A0A0A0",
     letterSpacing: 1,
+  },
+  billLogo: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginRight: 10,
   },
   exitButton: {
     width: 40,
